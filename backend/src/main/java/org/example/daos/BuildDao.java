@@ -1,6 +1,6 @@
 package org.example.daos;   // change to your package
 
-import org.example.models.Builds;
+import org.example.models.Build;
 import org.example.models.Part;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
@@ -11,16 +11,16 @@ import java.util.List;
 import java.util.Set;
 
 @Repository
-public class BuildsDao {
+public class BuildDao {
 
     private final JdbcTemplate jdbcTemplate;
 
-    public BuildsDao(JdbcTemplate jdbcTemplate) {
+    public BuildDao(JdbcTemplate jdbcTemplate) {
         this.jdbcTemplate = jdbcTemplate;
     }
 
-    private final RowMapper<Builds> buildMapper = (rs, rowNum) -> {
-        Builds build = new Builds();
+    private final RowMapper<Build> buildMapper = (rs, rowNum) -> {
+        Build build = new Build();
         build.setId(rs.getInt("id"));
         build.setName(rs.getString("name"));
         build.setDescription(rs.getString("description"));
@@ -45,22 +45,22 @@ public class BuildsDao {
         return part;
     };
 
-    public Builds findById(int id) {
+    public Build findById(int id) {
         String sql = "SELECT * FROM builds WHERE id = ?";
-        List<Builds> results = jdbcTemplate.query(sql, buildMapper, id);
+        List<Build> results = jdbcTemplate.query(sql, buildMapper, id);
         return results.isEmpty() ? null : results.get(0);
     }
 
-    public List<Builds> findAll() {
+    public List<Build> findAll() {
         return jdbcTemplate.query("SELECT * FROM builds", buildMapper);
     }
 
-    public List<Builds> findByUsername(String username) {
+    public List<Build> findByUsername(String username) {
         String sql = "SELECT * FROM builds WHERE username = ?";
         return jdbcTemplate.query(sql, buildMapper, username);
     }
 
-    public void create(Builds build) {
+    public void create(Build build) {
         String sql = """
             INSERT INTO builds (name, description, is_public, username)
             VALUES (?, ?, ?, ?)
@@ -72,7 +72,7 @@ public class BuildsDao {
                 build.getUsername());
     }
 
-    public void update(Builds build) {
+    public void update(Build build) {
         String sql = """
             UPDATE builds
             SET name = ?, description = ?, is_public = ?
@@ -91,17 +91,17 @@ public class BuildsDao {
 
     // ----- join table methods -----
 
-    public void addPartToBuilds(int buildId, int partId, int quantity) {
+    public void addPartToBuild(int buildId, int partId, int quantity) {
         String sql = "INSERT INTO build_parts (build_id, part_id, quantity) VALUES (?, ?, ?)";
         jdbcTemplate.update(sql, buildId, partId, quantity);
     }
 
-    public void removePartFromBuilds(int buildId, int partId) {
+    public void removePartFromBuild(int buildId, int partId) {
         String sql = "DELETE FROM build_parts WHERE build_id = ? AND part_id = ?";
         jdbcTemplate.update(sql, buildId, partId);
     }
 
-    public List<Part> findPartsByBuildsId(int buildId) {
+    public List<Part> findPartsByBuildId(int buildId) {
         String sql = """
             SELECT p.* FROM parts p
             JOIN build_parts bp ON p.id = bp.part_id
@@ -113,7 +113,7 @@ public class BuildsDao {
     /**
      * Search builds with LIKE + safe sorting
      */
-    public List<Builds> search(String search, String sortBy, String direction) {
+    public List<Build> search(String search, String sortBy, String direction) {
         StringBuilder sql = new StringBuilder("SELECT * FROM builds WHERE 1=1");
         List<Object> params = new ArrayList<>();
 

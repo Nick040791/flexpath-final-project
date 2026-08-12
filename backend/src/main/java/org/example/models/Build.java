@@ -1,7 +1,7 @@
 package org.example.models;
 import java.time.LocalDateTime;
 
-public class Builds {
+public class Build {
     private int id;
     private String name;
     private String description;
@@ -10,7 +10,7 @@ public class Builds {
     private LocalDateTime created_at;
 
     //Blank Constructor
-    public Builds(){}
+    public Build(){}
 
     //-----Getters and Setters----
 
