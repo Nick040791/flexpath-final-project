@@ -39,10 +39,10 @@ public class Builds {
     }
 
     //Is Public?
-    public boolean isIs_public() {
+    public boolean getIs_Public() {
         return is_public;
     }
-    public void setIs_public(boolean is_public) {
+    public void setIs_Public(boolean is_public) {
         this.is_public = is_public;
     }
 

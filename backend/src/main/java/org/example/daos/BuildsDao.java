@@ -1,0 +1,135 @@
+package org.example.daos;   // change to your package
+
+import org.example.models.Builds;
+import org.example.models.Part;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.core.RowMapper;
+import org.springframework.stereotype.Repository;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Set;
+
+@Repository
+public class BuildsDao {
+
+    private final JdbcTemplate jdbcTemplate;
+
+    public BuildsDao(JdbcTemplate jdbcTemplate) {
+        this.jdbcTemplate = jdbcTemplate;
+    }
+
+    private final RowMapper<Builds> buildMapper = (rs, rowNum) -> {
+        Builds build = new Builds();
+        build.setId(rs.getInt("id"));
+        build.setName(rs.getString("name"));
+        build.setDescription(rs.getString("description"));
+        build.setIs_Public(rs.getBoolean("is_public"));
+        build.setUsername(rs.getString("username"));
+        // Optional: build.setCreatedAt(...)
+        return build;
+    };
+
+    // Re-use a Part mapper if you already have one, or define a simple one here
+    private final RowMapper<Part> partMapper = (rs, rowNum) -> {
+        Part part = new Part();
+        part.setId(rs.getInt("id"));
+        part.setName(rs.getString("name"));
+        part.setCategory(rs.getString("category"));
+        part.setBrand(rs.getString("brand"));
+        part.setModel(rs.getString("model"));
+        part.setPrice(rs.getBigDecimal("price"));
+        part.setDescription(rs.getString("description"));
+        part.setIs_Public(rs.getBoolean("is_public"));
+        part.setUsername(rs.getString("username"));
+        return part;
+    };
+
+    public Builds findById(int id) {
+        String sql = "SELECT * FROM builds WHERE id = ?";
+        List<Builds> results = jdbcTemplate.query(sql, buildMapper, id);
+        return results.isEmpty() ? null : results.get(0);
+    }
+
+    public List<Builds> findAll() {
+        return jdbcTemplate.query("SELECT * FROM builds", buildMapper);
+    }
+
+    public List<Builds> findByUsername(String username) {
+        String sql = "SELECT * FROM builds WHERE username = ?";
+        return jdbcTemplate.query(sql, buildMapper, username);
+    }
+
+    public void create(Builds build) {
+        String sql = """
+            INSERT INTO builds (name, description, is_public, username)
+            VALUES (?, ?, ?, ?)
+            """;
+        jdbcTemplate.update(sql,
+                build.getName(),
+                build.getDescription(),
+                build.getIs_Public(),
+                build.getUsername());
+    }
+
+    public void update(Builds build) {
+        String sql = """
+            UPDATE builds
+            SET name = ?, description = ?, is_public = ?
+            WHERE id = ?
+            """;
+        jdbcTemplate.update(sql,
+                build.getName(),
+                build.getDescription(),
+                build.getIs_Public(),
+                build.getId());
+    }
+
+    public void delete(int id) {
+        jdbcTemplate.update("DELETE FROM builds WHERE id = ?", id);
+    }
+
+    // ----- join table methods -----
+
+    public void addPartToBuilds(int buildId, int partId, int quantity) {
+        String sql = "INSERT INTO build_parts (build_id, part_id, quantity) VALUES (?, ?, ?)";
+        jdbcTemplate.update(sql, buildId, partId, quantity);
+    }
+
+    public void removePartFromBuilds(int buildId, int partId) {
+        String sql = "DELETE FROM build_parts WHERE build_id = ? AND part_id = ?";
+        jdbcTemplate.update(sql, buildId, partId);
+    }
+
+    public List<Part> findPartsByBuildsId(int buildId) {
+        String sql = """
+            SELECT p.* FROM parts p
+            JOIN build_parts bp ON p.id = bp.part_id
+            WHERE bp.build_id = ?
+            """;
+        return jdbcTemplate.query(sql, partMapper, buildId);
+    }
+
+    /**
+     * Search builds with LIKE + safe sorting
+     */
+    public List<Builds> search(String search, String sortBy, String direction) {
+        StringBuilder sql = new StringBuilder("SELECT * FROM builds WHERE 1=1");
+        List<Object> params = new ArrayList<>();
+
+        if (search != null && !search.isBlank()) {
+            sql.append(" AND (name LIKE ? OR description LIKE ?)");
+            String like = "%" + search + "%";
+            params.add(like);
+            params.add(like);
+        }
+
+        Set<String> allowedSort = Set.of("name", "created_at");
+        String safeSort = allowedSort.contains(sortBy) ? sortBy : "name";
+        String safeDir = "DESC".equalsIgnoreCase(direction) ? "DESC" : "ASC";
+
+        sql.append(" ORDER BY ").append(safeSort).append(" ").append(safeDir);
+
+        return jdbcTemplate.query(sql.toString(), buildMapper, params.toArray());
+    }
+}
