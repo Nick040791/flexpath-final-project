@@ -21,7 +21,7 @@ public class BuildController {
 
     private boolean isAdmin(Authentication auth) {
         return auth.getAuthorities().stream()
-                .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
+                .anyMatch(a -> a.getAuthority().equals("ADMIN"));
     }
 
     // GET /api/builds?search=&sortBy=&direction=
