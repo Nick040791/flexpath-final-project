@@ -24,6 +24,7 @@ public class PartDao {
         Part part = new Part();
         part.setId(rs.getInt("id"));
         part.setName(rs.getString("name"));
+        part.setCategory(rs.getString("category"));
         part.setBrand(rs.getString("brand"));
         part.setModel(rs.getString("model"));
         part.setPrice(rs.getBigDecimal("price"));
