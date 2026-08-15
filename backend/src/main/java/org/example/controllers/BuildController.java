@@ -33,4 +33,19 @@ public class BuildController {
 
         return buildService.search(search, sortBy, direction, auth.getName(), isAdmin(auth));
     }
+    // GET api/builds/mine
+    @GetMapping("/mine")
+    public List<Build> getMyBuilds(Authentication auth) {
+        return buildService.getBuildsByUser(auth.getName());
+    }
+
+    // POST api/builds
+    // PUT api/builds/{id}
+    // DELETE api/builds/{id}
+
+    // --join table endpoints--
+
+    // POST api/builds/{buildId}/parts/{partId}?quantity=1
+    // DELETE api/builds/{buildId}/parts/{partId}
+    // GET api/builds/{Id}/parts
 }
