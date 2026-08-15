@@ -85,10 +85,7 @@ public class BuildController {
     }
     // GET api/builds/{Id}/parts
     @GetMapping("/{Id}/parts")
-    public List<Part> getParts(
-        @PathVariable int buildId,
-        Authentication auth) {
-
-    return buildService.getPartsInBuild(buildId, auth.getName(), isAdmin(auth));
+    public List<Part> getPartsInBuild(@PathVariable int buildId, Authentication auth) {
+        return buildService.getPartsInBuild(buildId, auth.getName(), isAdmin(auth));
     }
 }

@@ -26,11 +26,11 @@ public class BuildDao {
         build.setDescription(rs.getString("description"));
         build.setIs_Public(rs.getBoolean("is_public"));
         build.setUsername(rs.getString("username"));
-        // Optional: build.setCreatedAt(...)
+        build.setCreated_at(rs.getTimestamp("created_at").toLocalDateTime());
         return build;
     };
 
-    // Re-use a Part mapper if you already have one, or define a simple one here
+    // Part mapper for the join table query
     private final RowMapper<Part> partMapper = (rs, rowNum) -> {
         Part part = new Part();
         part.setId(rs.getInt("id"));
