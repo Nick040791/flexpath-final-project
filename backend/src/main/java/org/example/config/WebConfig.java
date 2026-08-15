@@ -1,4 +1,4 @@
-package config;
+package org.example.config;
 
 import org.springframework.context.annotation.Configuration;
 import org.springframework.lang.NonNull;

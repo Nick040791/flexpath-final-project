@@ -36,16 +36,59 @@ public class BuildController {
     // GET api/builds/mine
     @GetMapping("/mine")
     public List<Build> getMyBuilds(Authentication auth) {
-        return buildService.getBuildsByUser(auth.getName());
+        return buildService.findMine(auth.getName());
     }
-
+    // GET api/builds/{id}
+    @GetMapping("/{id}")
+    public Build findById (@PathVariable int id, Authentication auth) {
+        return buildService.findById(id, auth.getName(), isAdmin(auth));
+    }
     // POST api/builds
+    @PostMapping
+    @ResponseStatus(HttpStatus.CREATED)
+    public Build create(@RequestBody Build build, Authentication auth) {
+        return buildService.create(build, auth.getName());
+    }
     // PUT api/builds/{id}
+    @PutMapping("/{id}")
+    public Build updateBuild(@PathVariable int id, @RequestBody Build build, Authentication auth) {
+        return buildService.update(id, build, auth.getName(), isAdmin(auth));
+    }
     // DELETE api/builds/{id}
+    @DeleteMapping("/{id}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void delete(@PathVariable int id, Authentication auth) {
+        buildService.delete(id, auth.getName(), isAdmin(auth));
+    }
 
     // --join table endpoints--
 
     // POST api/builds/{buildId}/parts/{partId}?quantity=1
+    @PostMapping("/{Id}/parts/{partId}")
+    @ResponseStatus(HttpStatus.CREATED)
+    public void addPart(
+        @PathVariable int buildId, 
+        @PathVariable int partId,
+        @RequestParam(defaultValue = "1") int quantity,
+        Authentication auth) {
+        buildService.addPartToBuild(buildId, partId, quantity, auth.getName(), isAdmin(auth));
+    }
     // DELETE api/builds/{buildId}/parts/{partId}
+    @DeleteMapping("/{Id}/parts/{partId}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void removePart(
+        @PathVariable int buildId, 
+        @PathVariable int partId,
+        Authentication auth) {
+
+    buildService.removePartFromBuild(buildId, partId, auth.getName(), isAdmin(auth));
+    }
     // GET api/builds/{Id}/parts
+    @GetMapping("/{Id}/parts")
+    public List<Part> getParts(
+        @PathVariable int buildId,
+        Authentication auth) {
+
+    return buildService.getPartsInBuild(buildId, auth.getName(), isAdmin(auth));
+    }
 }
