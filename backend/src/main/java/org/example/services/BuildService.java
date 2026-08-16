@@ -230,7 +230,7 @@ public class BuildService {
             int buildId,
             String currentUsername,
             boolean isAdmin) {
-        
+
         findById(
                 buildId,
                 currentUsername,
