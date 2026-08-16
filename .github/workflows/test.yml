@@ -1,4 +1,4 @@
-name: Backend Tests and Coverage
+name: Backend Tests
 
 on:
   push:
@@ -17,9 +17,7 @@ defaults:
     working-directory: backend
 
 jobs:
-
   test:
-
     runs-on: ubuntu-latest
 
     steps:
@@ -29,12 +27,11 @@ jobs:
 
       - name: Set up Java
         uses: actions/setup-java@v5
-
         with:
           distribution: temurin
           java-version: '17'
           cache: maven
           cache-dependency-path: backend/pom.xml
 
-      - name: Run backend tests and coverage
+      - name: Build and run tests
         run: mvn clean verify
