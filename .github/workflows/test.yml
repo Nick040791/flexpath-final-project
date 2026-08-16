@@ -1,32 +1,40 @@
-name: Spring Boot Tests.yml
+name: Backend Tests and Coverage
+
 on:
   push:
     branches:
       - MyFinalSubmission
+
   pull_request:
     branches:
       - MyFinalSubmission
+
 permissions:
   contents: read
+
 defaults:
   run:
     working-directory: backend
+
 jobs:
+
   test:
+
     runs-on: ubuntu-latest
 
     steps:
+
       - name: Checkout repository
         uses: actions/checkout@v7
+
       - name: Set up Java
         uses: actions/setup-java@v5
+
         with:
           distribution: temurin
-          java-version: '26'
+          java-version: '17'
           cache: maven
           cache-dependency-path: backend/pom.xml
 
-      - name: Build and Run tests
+      - name: Run backend tests and coverage
         run: mvn clean verify
-
-
