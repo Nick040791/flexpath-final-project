@@ -113,7 +113,7 @@ public class BuildDao {
     /**
      * Search builds with LIKE + safe sorting
      */
-    public List<Build> search(String search, String sortBy, String direction) {
+    public List<Build> search(String search, String visibility, String sortBy, String direction) {
         StringBuilder sql = new StringBuilder("SELECT * FROM builds WHERE 1=1");
         List<Object> params = new ArrayList<>();
 
@@ -122,6 +122,15 @@ public class BuildDao {
             String like = "%" + search + "%";
             params.add(like);
             params.add(like);
+        }
+
+        if (visibility != null && !visibility.isBlank()) {
+            if ("public".equalsIgnoreCase(visibility)) {
+                sql.append(" AND is_public = TRUE");
+            }
+            if ("private".equalsIgnoreCase(visibility)) {
+                sql.append(" AND is_public = FALSE");
+            }
         }
 
         Set<String> allowedSort = Set.of("name", "created_at");

@@ -66,13 +66,14 @@ public class BuildService {
 
     public List<Build> search(
             String search,
+            String visibility,
             String sortBy,
             String direction,
             String currentUsername,
             boolean isAdmin) {
 
         List<Build> results =
-                buildDao.search(search, sortBy, direction);
+                buildDao.search(search, visibility, sortBy, direction);
 
         if (isAdmin) {
             return results;

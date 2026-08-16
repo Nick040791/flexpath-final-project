@@ -24,15 +24,16 @@ public class BuildController {
                 .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN") || a.getAuthority().equals("ADMIN"));
     }
 
-    // GET /api/builds?search=&sortBy=&direction=
+    // GET /api/builds?search=&visibility=&sortBy=&direction=
     @GetMapping
     public List<Build> search(
             @RequestParam(required = false) String search,
+            @RequestParam(required = false) String visibility,
             @RequestParam(defaultValue = "name") String sortBy,
             @RequestParam(defaultValue = "ASC") String direction,
             Authentication auth) {
 
-        return buildService.search(search, sortBy, direction, auth.getName(), isAdmin(auth));
+        return buildService.search(search, visibility, sortBy, direction, auth.getName(), isAdmin(auth));
     }
 
     // GET /api/builds/mine

@@ -122,6 +122,7 @@ class BuildServiceTest {
         when(
                 buildDao.search(
                         null,
+                        "private",
                         "name",
                         "ASC"
                 )
@@ -140,6 +141,7 @@ class BuildServiceTest {
                 ),
                 service.search(
                         null,
+                        "private",
                         "name",
                         "ASC",
                         "alice",
@@ -151,12 +153,15 @@ class BuildServiceTest {
                 3,
                 service.search(
                         null,
+                        "private",
                         "name",
                         "ASC",
                         "admin",
                         true
                 ).size()
         );
+
+        verify(buildDao, times(2)).search(null, "private", "name", "ASC");
     }
 
     @Test

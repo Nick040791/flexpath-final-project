@@ -31,11 +31,12 @@ class BuildControllerTest {
 
     @Test
     void searchBindsFiltersAndAdminAuthority() throws Exception {
-        when(service.search("gaming", "created_at", "DESC", "admin", true))
+        when(service.search("gaming", "public", "created_at", "DESC", "admin", true))
                 .thenReturn(List.of(build(1, "Gaming PC")));
 
         mvc.perform(get("/api/builds")
                         .param("search", "gaming")
+                        .param("visibility", "public")
                         .param("sortBy", "created_at")
                         .param("direction", "DESC")
                         .principal(admin()))
@@ -43,7 +44,7 @@ class BuildControllerTest {
                 .andExpect(jsonPath("$[0].id").value(1))
                 .andExpect(jsonPath("$[0].name").value("Gaming PC"));
 
-        verify(service).search("gaming", "created_at", "DESC", "admin", true);
+        verify(service).search("gaming", "public", "created_at", "DESC", "admin", true);
     }
 
     @Test
