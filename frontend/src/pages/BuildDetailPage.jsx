@@ -1,0 +1,274 @@
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { Link, useNavigate, useParams } from "react-router-dom";
+import { useAuth } from "../auth/AuthContext";
+import * as buildService from "../api/buildService";
+import * as partService from "../api/partService";
+import BuildForm from "../components/BuildForm";
+import VisibilityBadge from "../components/VisibilityBadge";
+import ConfirmDeleteModal from "../components/ConfirmDeleteModal";
+import { formatPrice } from "../utils/format";
+
+// Single build view: parts in the build, add/remove parts, edit/delete for owner or admin.
+const BuildDetailPage = () => {
+    const { id } = useParams();
+    const navigate = useNavigate();
+    const { username, isAdmin, isAuthenticated } = useAuth();
+
+    const [build, setBuild] = useState(null);
+    const [parts, setParts] = useState([]);
+    const [availableParts, setAvailableParts] = useState([]);
+    const [selectedPartId, setSelectedPartId] = useState("");
+    const [status, setStatus] = useState("loading");
+    const [errorMsg, setErrorMsg] = useState("");
+    const [editing, setEditing] = useState(false);
+    const [submitting, setSubmitting] = useState(false);
+    const [confirmDelete, setConfirmDelete] = useState(false);
+
+    const loadBuild = useCallback(async () => {
+        setStatus("loading");
+        setErrorMsg("");
+        try {
+            const [buildData, partsData] = await Promise.all([
+                buildService.getBuild(id),
+                buildService.getBuildParts(id),
+            ]);
+            setBuild(buildData);
+            setParts(partsData);
+            setStatus("success");
+        } catch (error) {
+            setBuild(null);
+            setParts([]);
+            setStatus("error");
+            setErrorMsg(error.message);
+        }
+    }, [id]);
+
+    useEffect(() => {
+        if (isAuthenticated) {
+            loadBuild();
+        }
+    }, [isAuthenticated, loadBuild]);
+
+    const canManage = Boolean(build) && (isAdmin || build.username === username);
+
+    // Load the parts the current user is allowed to see, for the "add part" picker.
+    useEffect(() => {
+        if (canManage) {
+            partService.searchParts()
+                .then(setAvailableParts)
+                .catch(() => setAvailableParts([]));
+        }
+    }, [canManage]);
+
+    const totalPrice = useMemo(
+        () => parts.reduce((sum, part) => sum + Number(part.price ?? 0), 0),
+        [parts]
+    );
+
+    const addableParts = useMemo(
+        () => availableParts.filter((part) => !parts.some((p) => p.id === part.id)),
+        [availableParts, parts]
+    );
+
+    async function handleUpdate(payload) {
+        setSubmitting(true);
+        setErrorMsg("");
+        try {
+            await buildService.updateBuild(id, payload);
+            setEditing(false);
+            await loadBuild();
+        } catch (error) {
+            setErrorMsg(error.message);
+        } finally {
+            setSubmitting(false);
+        }
+    }
+
+    async function handleDelete() {
+        setSubmitting(true);
+        try {
+            await buildService.deleteBuild(id);
+            navigate("/builds");
+        } catch (error) {
+            setErrorMsg(error.message);
+            setConfirmDelete(false);
+            setSubmitting(false);
+        }
+    }
+
+    async function handleAddPart() {
+        if (!selectedPartId) {
+            return;
+        }
+        setErrorMsg("");
+        try {
+            await buildService.addPartToBuild(id, Number(selectedPartId), 1);
+            setSelectedPartId("");
+            await loadBuild();
+        } catch (error) {
+            setErrorMsg(error.message);
+        }
+    }
+
+    async function handleRemovePart(partId) {
+        setErrorMsg("");
+        try {
+            await buildService.removePartFromBuild(id, partId);
+            await loadBuild();
+        } catch (error) {
+            setErrorMsg(error.message);
+        }
+    }
+
+    if (status === "loading") {
+        return <section className="container py-5"><p className="text-muted">Loading build...</p></section>;
+    }
+
+    if (status === "error") {
+        return (
+            <section className="container py-5">
+                <div className="alert alert-danger">{errorMsg}</div>
+            </section>
+        );
+    }
+
+    return (
+        <section className="container py-5 text-start">
+            <div className="d-flex flex-column flex-sm-row gap-3 justify-content-between align-items-sm-start mb-4 bg-warning-subtle border border-warning border-2 rounded-4 p-4 shadow-sm">
+                <div>
+                    <h1 className="h3 mb-1">{build.name}</h1>
+                    <p className="text-muted mb-0">by {build.username}</p>
+                </div>
+                <VisibilityBadge isPublic={build.is_Public} />
+            </div>
+
+            {errorMsg && <div className="alert alert-danger">{errorMsg}</div>}
+
+            <div className="card shadow-sm mb-4">
+                <div className="card-body">
+                    <p className="card-text mb-0">{build.description || "No description."}</p>
+                </div>
+                {canManage && (
+                    <div className="card-footer d-flex gap-2">
+                        <button
+                            type="button"
+                            className="btn btn-outline-warning text-dark fw-semibold btn-sm"
+                            onClick={() => setEditing((prev) => !prev)}
+                        >
+                            {editing ? "Cancel Edit" : "Edit"}
+                        </button>
+                        <button
+                            type="button"
+                            className="btn btn-outline-danger btn-sm"
+                            onClick={() => setConfirmDelete(true)}
+                        >
+                            Delete
+                        </button>
+                    </div>
+                )}
+            </div>
+
+            {editing && canManage && (
+                <div className="p-4 mb-4 bg-warning-subtle rounded-4 shadow border border-warning border-2">
+                    <h2 className="h5">Edit Build</h2>
+                    <BuildForm
+                        initial={build}
+                        onSubmit={handleUpdate}
+                        onCancel={() => setEditing(false)}
+                        submitting={submitting}
+                        submitLabel="Update Build"
+                    />
+                </div>
+            )}
+
+            <div className="d-flex justify-content-between align-items-center mb-2">
+                <h2 className="h4 mb-0">Parts in this Build</h2>
+                <span className="fw-bold">Total: {formatPrice(totalPrice)}</span>
+            </div>
+
+            {parts.length === 0 ? (
+                <p className="text-muted">No parts in this build yet.</p>
+            ) : (
+                <div className="table-responsive mb-4">
+                    <table className="table table-striped table-hover align-middle border border-warning">
+                        <thead className="table-warning">
+                            <tr>
+                                <th scope="col">Name</th>
+                                <th scope="col">Category</th>
+                                <th scope="col">Brand</th>
+                                <th scope="col">Price</th>
+                                {canManage && <th scope="col"></th>}
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {parts.map((part) => (
+                                <tr key={part.id}>
+                                    <td><Link to={`/parts/${part.id}`}>{part.name}</Link></td>
+                                    <td>{part.category}</td>
+                                    <td>{part.brand}</td>
+                                    <td>{formatPrice(part.price)}</td>
+                                    {canManage && (
+                                        <td className="text-end">
+                                            <button
+                                                type="button"
+                                                className="btn btn-sm btn-outline-danger"
+                                                onClick={() => handleRemovePart(part.id)}
+                                            >
+                                                Remove
+                                            </button>
+                                        </td>
+                                    )}
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+            )}
+
+            {canManage && (
+                <div className="p-4 bg-warning-subtle rounded-4 shadow border border-warning border-2">
+                    <h3 className="h5">Add a Part</h3>
+                    <div className="row g-2 align-items-end">
+                        <div className="col-md-8">
+                            <label className="form-label" htmlFor="add-part">Part</label>
+                            <select
+                                id="add-part"
+                                className="form-select"
+                                value={selectedPartId}
+                                onChange={(event) => setSelectedPartId(event.target.value)}
+                            >
+                                <option value="">Choose a part...</option>
+                                {addableParts.map((part) => (
+                                    <option value={part.id} key={part.id}>
+                                        {part.name} ({formatPrice(part.price)})
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+                        <div className="col-md-4">
+                            <button
+                                type="button"
+                                className="btn btn-warning w-100 fw-bold shadow-sm"
+                                onClick={handleAddPart}
+                                disabled={!selectedPartId}
+                            >
+                                Add to Build
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {confirmDelete && (
+                <ConfirmDeleteModal
+                    itemName={build.name}
+                    onConfirm={handleDelete}
+                    onCancel={() => setConfirmDelete(false)}
+                    deleting={submitting}
+                />
+            )}
+        </section>
+    );
+};
+
+export default BuildDetailPage;

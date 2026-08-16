@@ -13,8 +13,9 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/parts")
 public class PartController {
+
     private final PartService partService;
-    
+
     public PartController(PartService partService) {
         this.partService = partService;
     }
@@ -24,24 +25,25 @@ public class PartController {
                 .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN") || a.getAuthority().equals("ADMIN"));
     }
 
-    // GET /api/parts?search=&sortBy=&direction=
+    // GET /api/parts?search=&category=&brand=&maxPrice=&sortBy=&direction=
     @GetMapping
     public List<Part> search(
             @RequestParam(required = false) String search,
             @RequestParam(required = false) String category,
             @RequestParam(required = false) String brand,
             @RequestParam(required = false) BigDecimal maxPrice,
-            @RequestParam(required = false) String sortBy,
-            @RequestParam(required = false) String direction,
+            @RequestParam(defaultValue = "name") String sortBy,
+            @RequestParam(defaultValue = "ASC") String direction,
             Authentication auth) {
+
         String username = auth.getName();
         boolean admin = isAdmin(auth);
         return partService.search(search, category, brand, maxPrice, sortBy, direction, username, admin);
     }
+
     // GET /api/parts/mine
     @GetMapping("/mine")
     public List<Part> findMine(Authentication auth) {
-
         return partService.findMine(auth.getName());
     }
 
@@ -50,12 +52,14 @@ public class PartController {
     public Part findById(@PathVariable int id, Authentication auth) {
         return partService.findById(id, auth.getName(), isAdmin(auth));
     }
+
     // POST /api/parts
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public Part create(@RequestBody Part part, Authentication auth) {
         return partService.create(part, auth.getName());
     }
+
     // PUT /api/parts/{id}
     @PutMapping("/{id}")
     public Part update(@PathVariable int id, @RequestBody Part part, Authentication auth) {

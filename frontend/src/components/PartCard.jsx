@@ -1,64 +1,59 @@
-import { useMemo } from 'react';
-import { useSearch } from '../hooks/useSearch';
-import { PartFields } from '../utils/constants';
-import { average, median, formatNumber } from '../utils/stats';
+import { Link } from "react-router-dom";
+import PropTypes from "prop-types";
+import VisibilityBadge from "./VisibilityBadge";
+import { formatDate, formatPrice } from "../utils/format";
 
-function PartCards() {
-    const { results, status } = useSearch();
-    const metricData = useMemo(() => {
-        return PartFields.map((field) => {
-            const values = results
-            .map((record) => Number(record[field.key]))
-            .filter((value) => !Number.isNaN(value));
-
-            return {
-                title: field.title,
-                unit: field.unit,
-                averageValue: average(values),
-                medianValue: median(values),
-            };
-        });
-    },[results])
-
-    if (results.length === 0 && status != 'loading') {
-        return (
-            <section className="container py-4">
-                <div className="card text-center text-muted">
-                    <div className="card-body">
-                        Run a search to see metrics.
-                    </div>
-                </div>
-            </section>
-        );
-    }
-
+function PartCard({ part, canManage = false, onDelete }) {
     return (
-        <section className="container py-4">
-            <div className="row row-cols-1 row-col-me-4 g-3">
-                {
-                    metricData.map((metric) => (
-                        <div className="col" key={metric.title}>
-                            <div className="card h-100 shadow-sm">
-                                <div className="card-body">
-                                    <h2 className="h5 card-title">{metric.title}</h2>
-
-                                    <p className="card-text mb-1">
-                                        Average: {formatNumber(metric.averageValue)} {metric.unit}
-                                    </p>
-
-                                    <p className="card-text mb-0">
-                                        Median: {formatNumber(metric.medianValue)} {metric.unit}
-                                    </p>
-                                </div>
-                            </div>
-                        </div>
-                        )
-                    )
-                }
-
+        <div className="col">
+            <div className="card h-100 shadow border-warning border-2 rounded-4 overflow-hidden">
+                <div className="card-body bg-warning-subtle p-4">
+                    <div className="d-flex justify-content-between align-items-start mb-2">
+                        <h2 className="h5 card-title mb-0">
+                            <Link className="link-dark link-offset-2 link-underline-opacity-25 link-underline-opacity-100-hover fw-bold" to={`/parts/${part.id}`}>{part.name}</Link>
+                        </h2>
+                        <VisibilityBadge isPublic={part.is_Public} />
+                    </div>
+                    <h3 className="h6 card-subtitle mb-2 text-muted">
+                        {[part.category, part.brand, part.model].filter(Boolean).join(" · ")}
+                    </h3>
+                    <p className="card-text">{part.description}</p>
+                </div>
+                <div className="card-footer bg-white d-flex flex-column flex-sm-row gap-2 justify-content-between align-items-sm-center">
+                    <span className="badge text-bg-warning fs-6">{formatPrice(part.price)}</span>
+                    <small className="text-muted">
+                        by {part.username} · {formatDate(part.created_at)}
+                    </small>
+                    {canManage && onDelete && (
+                        <button
+                            type="button"
+                            className="btn btn-sm btn-outline-danger"
+                            onClick={() => onDelete(part)}
+                        >
+                            Delete
+                        </button>
+                    )}
+                </div>
             </div>
-        </section>
+        </div>
     );
+}
+
+PartCard.propTypes = {
+    part: PropTypes.shape({
+        id: PropTypes.number.isRequired,
+        name: PropTypes.string,
+        category: PropTypes.string,
+        brand: PropTypes.string,
+        model: PropTypes.string,
+        price: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
+        description: PropTypes.string,
+        is_Public: PropTypes.bool,
+        username: PropTypes.string,
+        created_at: PropTypes.string,
+    }).isRequired,
+    canManage: PropTypes.bool,
+    onDelete: PropTypes.func,
 };
 
-export default PartCards;
+export default PartCard;

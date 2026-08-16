@@ -11,8 +11,8 @@ public class WebConfig implements WebMvcConfigurer {
     @Override
     public void addCorsMappings(@NonNull CorsRegistry registry) {
         registry.addMapping("/**")
-        // Allow requests from the frontend application
-                .allowedOrigins("http://localhost:5173") // Replace with your frontend URL
+                // Vite may be opened through either hostname during local development.
+                .allowedOrigins("http://localhost:5173", "http://127.0.0.1:5173")
                 .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
                 .allowedHeaders("*")
                 .allowCredentials(true);

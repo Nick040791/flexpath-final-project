@@ -9,12 +9,16 @@ import org.springframework.web.bind.annotation.*;
 import java.security.Principal;
 import java.util.List;
 
-//Logged in User Controller
-
+/**
+ * Controller for the profile of the currently logged in user.
+ */
 @RestController
 @RequestMapping("/api/profile")
 @PreAuthorize("isAuthenticated()")
 public class ProfileController {
+    /**
+     * The user data access object.
+     */
     @Autowired
     private UserDao userDao;
 

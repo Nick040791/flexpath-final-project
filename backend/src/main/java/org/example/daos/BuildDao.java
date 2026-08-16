@@ -30,7 +30,7 @@ public class BuildDao {
         return build;
     };
 
-    // Part mapper for the join table query
+    // Re-use a Part mapper if you already have one, or define a simple one here
     private final RowMapper<Part> partMapper = (rs, rowNum) -> {
         Part part = new Part();
         part.setId(rs.getInt("id"));

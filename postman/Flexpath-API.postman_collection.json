@@ -1,0 +1,243 @@
+{
+  "info": {
+    "_postman_id": "927cf78d-fb69-4afd-a232-e14bdcc75001",
+    "name": "Flexpath PC Parts & Builds API",
+    "description": "Manual endpoint tests for the Spring Boot API. Run Authentication > Login first; it stores the JWT in the collection-level accessToken variable. Requests prefixed with [DESTRUCTIVE] modify or delete data.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }]
+  },
+  "event": [
+    {
+      "listen": "test",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "pm.test('Response completed without a server error', function () {",
+          "  pm.expect(pm.response.code).to.be.below(500);",
+          "});"
+        ]
+      }
+    }
+  ],
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:8080" },
+    { "key": "username", "value": "admin" },
+    { "key": "password", "value": "admin", "type": "secret" },
+    { "key": "accessToken", "value": "", "type": "secret" },
+    { "key": "targetUsername", "value": "user" },
+    { "key": "partId", "value": "1" },
+    { "key": "buildId", "value": "1" },
+    { "key": "search", "value": "" },
+    { "key": "category", "value": "" },
+    { "key": "brand", "value": "" },
+    { "key": "maxPrice", "value": "10000" },
+    { "key": "sortDirection", "value": "ASC" }
+  ],
+  "item": [
+    {
+      "name": "Authentication",
+      "item": [
+        {
+          "name": "Login and Capture JWT",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"{{username}}\",\n  \"password\": \"{{password}}\"\n}"
+            },
+            "url": "{{baseUrl}}/auth/login",
+            "description": "Authenticates through the JWT starter and stores accessToken.token for all subsequent requests."
+          },
+          "event": [{
+            "listen": "test",
+            "script": {
+              "type": "text/javascript",
+              "exec": [
+                "pm.test('Login succeeded', function () { pm.response.to.have.status(200); });",
+                "const json = pm.response.json();",
+                "const token = json?.accessToken?.token ?? json?.token;",
+                "pm.test('Access token is present', function () { pm.expect(token).to.be.a('string').and.not.empty; });",
+                "if (token) pm.collectionVariables.set('accessToken', token);"
+              ]
+            }
+          }]
+        },
+        {
+          "name": "Register User",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"username\": \"postman-user\",\n  \"password\": \"change-me\"\n}" },
+            "url": "{{baseUrl}}/api/users",
+            "description": "Public registration endpoint. Change the username before rerunning."
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('User created', function () { pm.response.to.have.status(201); });"] } }]
+        }
+      ]
+    },
+    {
+      "name": "Profile",
+      "item": [
+        {
+          "name": "Get Current Profile",
+          "request": { "method": "GET", "header": [], "url": "{{baseUrl}}/api/profile" },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('Profile returned', function () { pm.response.to.have.status(200); });"] } }]
+        },
+        {
+          "name": "Get Current Roles",
+          "request": { "method": "GET", "header": [], "url": "{{baseUrl}}/api/profile/roles" },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('Roles returned', function () { pm.response.to.have.status(200); });", "pm.test('Roles are an array', function () { pm.expect(pm.response.json()).to.be.an('array'); });"] } }]
+        },
+        {
+          "name": "[DESTRUCTIVE] Change Current Password",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "text/plain" }],
+            "body": { "mode": "raw", "raw": "new-password" },
+            "url": "{{baseUrl}}/api/profile/change-password",
+            "description": "Changes the current user's password. Run manually only and update the password collection variable afterward."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Parts",
+      "item": [
+        {
+          "name": "Search Parts",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/parts?search={{search}}&category={{category}}&brand={{brand}}&maxPrice={{maxPrice}}&sortBy=name&direction={{sortDirection}}"
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('Parts returned', function () { pm.response.to.have.status(200); });", "pm.test('Body is an array', function () { pm.expect(pm.response.json()).to.be.an('array'); });"] } }]
+        },
+        {
+          "name": "Get My Parts",
+          "request": { "method": "GET", "header": [], "url": "{{baseUrl}}/api/parts/mine" }
+        },
+        {
+          "name": "Get Part by ID",
+          "request": { "method": "GET", "header": [], "url": "{{baseUrl}}/api/parts/{{partId}}" }
+        },
+        {
+          "name": "Create Part and Capture ID",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"Postman Test GPU\",\n  \"category\": \"GPU\",\n  \"brand\": \"Test Brand\",\n  \"model\": \"POSTMAN-1\",\n  \"price\": 499.99,\n  \"description\": \"Created by the Postman collection\",\n  \"is_Public\": true\n}" },
+            "url": "{{baseUrl}}/api/parts"
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('Part created', function () { pm.response.to.have.status(201); });", "const json = pm.response.json();", "if (json.id !== undefined) pm.collectionVariables.set('partId', String(json.id));"] } }]
+        },
+        {
+          "name": "[DESTRUCTIVE] Update Part",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"Updated Postman GPU\",\n  \"category\": \"GPU\",\n  \"brand\": \"Test Brand\",\n  \"model\": \"POSTMAN-2\",\n  \"price\": 549.99,\n  \"description\": \"Updated by Postman\",\n  \"is_Public\": true\n}" },
+            "url": "{{baseUrl}}/api/parts/{{partId}}"
+          }
+        },
+        {
+          "name": "[DESTRUCTIVE] Delete Part",
+          "request": { "method": "DELETE", "header": [], "url": "{{baseUrl}}/api/parts/{{partId}}" }
+        }
+      ]
+    },
+    {
+      "name": "Builds",
+      "item": [
+        {
+          "name": "Search Builds",
+          "request": { "method": "GET", "header": [], "url": "{{baseUrl}}/api/builds?search={{search}}&sortBy=name&direction={{sortDirection}}" },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('Builds returned', function () { pm.response.to.have.status(200); });", "pm.test('Body is an array', function () { pm.expect(pm.response.json()).to.be.an('array'); });"] } }]
+        },
+        {
+          "name": "Get My Builds",
+          "request": { "method": "GET", "header": [], "url": "{{baseUrl}}/api/builds/mine" }
+        },
+        {
+          "name": "Get Build by ID",
+          "request": { "method": "GET", "header": [], "url": "{{baseUrl}}/api/builds/{{buildId}}" }
+        },
+        {
+          "name": "Create Build and Capture ID",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"Postman Test Build\",\n  \"description\": \"Created by the Postman collection\",\n  \"is_Public\": true\n}" },
+            "url": "{{baseUrl}}/api/builds"
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('Build created', function () { pm.response.to.have.status(201); });", "const json = pm.response.json();", "if (json.id !== undefined) pm.collectionVariables.set('buildId', String(json.id));"] } }]
+        },
+        {
+          "name": "[DESTRUCTIVE] Update Build",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"Updated Postman Build\",\n  \"description\": \"Updated by Postman\",\n  \"is_Public\": true\n}" },
+            "url": "{{baseUrl}}/api/builds/{{buildId}}"
+          }
+        },
+        {
+          "name": "Add Part to Build (Bodyless 201)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/api/builds/{{buildId}}/parts/{{partId}}?quantity=1",
+            "description": "Exercises the original bug path: success is 201 Created with an empty response body."
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('Part added with bodyless 201', function () { pm.response.to.have.status(201); });", "pm.test('Response body is empty', function () { pm.expect(pm.response.text()).to.eql(''); });"] } }]
+        },
+        {
+          "name": "Get Parts in Build",
+          "request": { "method": "GET", "header": [], "url": "{{baseUrl}}/api/builds/{{buildId}}/parts" }
+        },
+        {
+          "name": "[DESTRUCTIVE] Remove Part from Build",
+          "request": { "method": "DELETE", "header": [], "url": "{{baseUrl}}/api/builds/{{buildId}}/parts/{{partId}}" }
+        },
+        {
+          "name": "[DESTRUCTIVE] Delete Build",
+          "request": { "method": "DELETE", "header": [], "url": "{{baseUrl}}/api/builds/{{buildId}}" }
+        }
+      ]
+    },
+    {
+      "name": "Admin Users",
+      "description": "These requests require an ADMIN token.",
+      "item": [
+        { "name": "List Users", "request": { "method": "GET", "header": [], "url": "{{baseUrl}}/api/users" } },
+        { "name": "Get User", "request": { "method": "GET", "header": [], "url": "{{baseUrl}}/api/users/{{targetUsername}}" } },
+        { "name": "Get User Roles", "request": { "method": "GET", "header": [], "url": "{{baseUrl}}/api/users/{{targetUsername}}/roles" } },
+        {
+          "name": "[DESTRUCTIVE] Update User Password",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "text/plain" }],
+            "body": { "mode": "raw", "raw": "new-password" },
+            "url": "{{baseUrl}}/api/users/{{targetUsername}}/password"
+          }
+        },
+        {
+          "name": "[DESTRUCTIVE] Add Role",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "text/plain" }],
+            "body": { "mode": "raw", "raw": "USER" },
+            "url": "{{baseUrl}}/api/users/{{targetUsername}}/roles"
+          }
+        },
+        { "name": "[DESTRUCTIVE] Delete Role", "request": { "method": "DELETE", "header": [], "url": "{{baseUrl}}/api/users/{{targetUsername}}/roles/USER" } },
+        { "name": "[DESTRUCTIVE] Delete User", "request": { "method": "DELETE", "header": [], "url": "{{baseUrl}}/api/users/{{targetUsername}}" } }
+      ]
+    }
+  ]
+}
