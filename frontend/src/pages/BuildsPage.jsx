@@ -7,6 +7,15 @@ import BuildForm from "../components/BuildForm";
 import ConfirmDeleteModal from "../components/ConfirmDeleteModal";
 import { BUILD_SORT_OPTIONS } from "../utils/constants";
 
+const BUILD_FILTERS = [
+    {
+        name: "visibility",
+        label: "Visibility",
+        type: "select",
+        options: ["Public", "Private"],
+    },
+];
+
 // Builds list — own + public builds (the backend filters visibility), with search & sort.
 const BuildsPage = () => {
     const { isAuthenticated, loading: authLoading, username, isAdmin } = useAuth();
@@ -103,6 +112,7 @@ const BuildsPage = () => {
             )}
 
             <SearchBar
+                filters={BUILD_FILTERS}
                 sortOptions={BUILD_SORT_OPTIONS}
                 onSearch={loadBuilds}
                 loading={status === "loading"}

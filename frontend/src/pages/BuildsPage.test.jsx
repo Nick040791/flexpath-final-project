@@ -30,6 +30,27 @@ describe("BuildsPage", () => {
         expect(cards[1].props.canManage).toBe(false);
     });
 
+    test("exposes the visibility filter and forwards selected search parameters", async () => {
+        useAuth.mockReturnValue({ isAuthenticated: true, loading: false, username: "nick", isAdmin: false });
+        service.searchBuilds.mockResolvedValue([]);
+        let renderer;
+        await act(async () => { renderer = create(<BuildsPage />); });
+
+        const searchBar = renderer.root.findByType("search-bar");
+        expect(searchBar.props.filters).toEqual([
+            {
+                name: "visibility",
+                label: "Visibility",
+                type: "select",
+                options: ["Public", "Private"],
+            },
+        ]);
+
+        const params = { search: "gaming", visibility: "Public", sortBy: "name", direction: "ASC" };
+        await act(async () => searchBar.props.onSearch(params));
+        expect(service.searchBuilds).toHaveBeenLastCalledWith(params);
+    });
+
     test("creates and deletes builds then refreshes", async () => {
         useAuth.mockReturnValue({ isAuthenticated: true, loading: false, username: "nick", isAdmin: false });
         service.searchBuilds.mockResolvedValue([{ id: 1, name: "Build", username: "nick" }]);
