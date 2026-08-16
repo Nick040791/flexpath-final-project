@@ -32,7 +32,7 @@ jobs:
 
         with:
           distribution: temurin
-          java-version: '26'
+          java-version: '17'
           cache: maven
           cache-dependency-path: backend/pom.xml
 
