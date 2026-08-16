@@ -1,43 +1,67 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+
     <modelVersion>4.0.0</modelVersion>
+
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
         <version>3.3.5</version>
         <relativePath/>
     </parent>
+
     <groupId>org.example</groupId>
     <artifactId>flexpath-final-project-server</artifactId>
     <version>0.0.1-SNAPSHOT</version>
+
     <name>spring-boot</name>
     <description>Server application for the flexpath final project.</description>
+
     <url/>
+
     <licenses>
         <license/>
     </licenses>
+
     <developers>
         <developer/>
     </developers>
+
     <scm>
         <connection/>
         <developerConnection/>
         <tag/>
         <url/>
     </scm>
+
     <properties>
+
+        <!-- Application Java version -->
         <java.version>17</java.version>
+
+        <!--
+            Rubric target:
+            backend unit-test coverage must be at least 70%.
+        -->
+        <backend.coverage.minimum>0.70</backend.coverage.minimum>
+
     </properties>
+
     <dependencies>
+
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-data-jdbc</artifactId>
         </dependency>
+
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-jdbc</artifactId>
         </dependency>
+
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-web</artifactId>
@@ -48,116 +72,193 @@
             <artifactId>mysql-connector-j</artifactId>
             <scope>runtime</scope>
         </dependency>
+
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-test</artifactId>
             <scope>test</scope>
         </dependency>
+
         <dependency>
             <groupId>org.springframework.security</groupId>
             <artifactId>spring-security-test</artifactId>
             <scope>test</scope>
         </dependency>
+
         <dependency>
             <groupId>eu.fraho.spring</groupId>
             <artifactId>security-jwt-base-spring-boot-starter</artifactId>
             <version>5.0.9</version>
         </dependency>
+
         <dependency>
             <groupId>ch.vorburger.mariaDB4j</groupId>
             <artifactId>mariaDB4j</artifactId>
             <version>3.1.0</version>
         </dependency>
+
         <dependency>
             <groupId>org.mariadb.jdbc</groupId>
             <artifactId>mariadb-java-client</artifactId>
             <version>3.4.1</version>
         </dependency>
+
         <dependency>
             <groupId>org.mybatis</groupId>
             <artifactId>mybatis</artifactId>
             <version>3.5.6</version>
         </dependency>
+
     </dependencies>
 
     <build>
+
         <plugins>
+
+            <!-- Spring Boot packaging -->
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
             </plugin>
+
+            <!-- Java compiler -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
+
                 <configuration>
                     <release>${java.version}</release>
                     <source>8</source>
                     <target>8</target>
                 </configuration>
+
             </plugin>
+
+            <!-- Unit tests -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
 
                 <configuration>
-                    <!-- Fail CI if Maven discovers zero unit tests -->
+
+                    <!--
+                        Fail the build if Maven unexpectedly
+                        discovers zero unit tests.
+                    -->
                     <failIfNoTests>true</failIfNoTests>
 
-                    <!-- Allows Boot 3.3's Mockito/Byte Buddy stack to run on newer local JDKs. -->
+                    <!--
+                        Allows the Mockito / Byte Buddy stack
+                        to run on newer local JDKs.
+                    -->
                     <systemPropertyVariables>
                         <net.bytebuddy.experimental>true</net.bytebuddy.experimental>
                     </systemPropertyVariables>
+
                 </configuration>
+
             </plugin>
+
+            <!-- Code coverage -->
             <plugin>
+
                 <groupId>org.jacoco</groupId>
                 <artifactId>jacoco-maven-plugin</artifactId>
                 <version>0.8.12</version>
+
                 <executions>
+
+                    <!--
+                        Attach the JaCoCo agent before tests run.
+
+                        No package include is specified here because
+                        we want coverage for the entire application,
+                        not only controllers.
+                    -->
                     <execution>
-                        <configuration>
-                            <includes>
-                                <include>org.example.*</include>
-                            </includes>
-                        </configuration>
+
+                        <id>prepare-agent</id>
+
                         <goals>
                             <goal>prepare-agent</goal>
                         </goals>
+
                     </execution>
+
+                    <!--
+                        Generate:
+                        target/site/jacoco/index.html
+                    -->
                     <execution>
+
                         <id>report</id>
+
                         <phase>verify</phase>
+
                         <goals>
                             <goal>report</goal>
                         </goals>
+
                     </execution>
+
+                    <!--
+                        Enforce backend-wide line coverage.
+                    -->
                     <execution>
-                        <id>controller-coverage-check</id>
+
+                        <id>backend-coverage-check</id>
+
                         <phase>verify</phase>
+
                         <goals>
                             <goal>check</goal>
                         </goals>
+
                         <configuration>
+
                             <rules>
+
                                 <rule>
-                                    <element>PACKAGE</element>
-                                    <includes>
-                                        <include>org.example.controllers</include>
-                                    </includes>
+
+                                    <!--
+                                        BUNDLE means the complete Maven
+                                        backend project rather than one
+                                        package such as controllers.
+                                    -->
+                                    <element>BUNDLE</element>
+
                                     <limits>
+
                                         <limit>
+
                                             <counter>LINE</counter>
-                                            <value>COVEREDRATIO</value>
-                                            <minimum>0.50</minimum>
+
+                                            <value>
+                                                COVEREDRATIO
+                                            </value>
+
+                                            <minimum>
+                                                ${backend.coverage.minimum}
+                                            </minimum>
+
                                         </limit>
+
                                     </limits>
+
                                 </rule>
+
                             </rules>
+
                         </configuration>
+
                     </execution>
+
                 </executions>
+
             </plugin>
+
         </plugins>
+
     </build>
 
 </project>
