@@ -1,9 +1,11 @@
 package org.example.services;
 
-import org.checkerframework.checker.nullness.qual.NonNull;
+
 import org.example.daos.BuildDao;
+import org.example.daos.PartDao;
 import org.example.models.Build;
 import org.example.models.Part;
+import org.checkerframework.checker.nullness.qual.NonNull;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
@@ -14,9 +16,11 @@ import java.util.List;
 public class BuildService {
 
     private final BuildDao buildDao;
+    private final PartDao partDao;
 
-    public BuildService(BuildDao buildDao) {
+    public BuildService(BuildDao buildDao, PartDao partDao) {
         this.buildDao = buildDao;
+        this.partDao = partDao;
     }
 
     public Build create(@NonNull Build build, String currentUsername) {
@@ -90,17 +94,46 @@ public class BuildService {
 
     public void addPartToBuild(int buildId, int partId, int quantity,
                                String currentUsername, boolean isAdmin) {
-        Build build = findById(buildId, currentUsername, isAdmin); // also enforces visibility
+
+        Build build = findById(buildId, currentUsername, isAdmin);
 
         if (!isAdmin && !build.getUsername().equals(currentUsername)) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "You can only modify your own builds");
+            throw new ResponseStatusException(
+                    HttpStatus.FORBIDDEN,
+                    "You can only modify your own builds"
+            );
+        }
+
+        Part part = partDao.findById(partId);
+
+        if (part == null) {
+            throw new ResponseStatusException(
+                    HttpStatus.NOT_FOUND,
+                    "Part not found"
+            );
+        }
+
+        if (!part.getIs_Public()
+                && !isAdmin
+                && !part.getUsername().equals(currentUsername)) {
+
+            throw new ResponseStatusException(
+                    HttpStatus.FORBIDDEN,
+                    "You cannot add another user's private part"
+            );
+        }
+
+        if (quantity <= 0) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Quantity must be greater than zero"
+            );
         }
 
         buildDao.addPartToBuild(buildId, partId, quantity);
     }
 
-    public void removePartFromBuild(int buildId, int partId,
-                                    String currentUsername, boolean isAdmin) {
+    public void removePartFromBuild(int buildId, int partId, String currentUsername, boolean isAdmin) {
         Build build = findById(buildId, currentUsername, isAdmin);
 
         if (!isAdmin && !build.getUsername().equals(currentUsername)) {
@@ -111,7 +144,19 @@ public class BuildService {
     }
 
     public List<Part> getPartsInBuild(int buildId, String currentUsername, boolean isAdmin) {
-        findById(buildId, currentUsername, isAdmin); // enforce visibility first
-        return buildDao.findPartsByBuildId(buildId);
+
+        findById(buildId, currentUsername, isAdmin);
+        List<Part> parts = buildDao.findPartsByBuildId(buildId);
+        if (isAdmin) {
+            return parts;
+        }
+
+        return parts.stream()
+            .filter(part ->
+                    part.getIs_Public()
+                    || part.getUsername().equals(currentUsername)
+            )
+            .toList();
+         }
     }
-}
+
