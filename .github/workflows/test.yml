@@ -3,11 +3,11 @@ name: Backend Tests
 on:
   push:
     branches:
-      - MyFinalSubmission
+      - expose-backend-param-on-BuildsPage.jsx
 
   pull_request:
     branches:
-      - MyFinalSubmission
+      - expose-backend-param-on-BuildsPage.jsx
 
 permissions:
   contents: read
