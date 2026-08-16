@@ -1,3 +1,5 @@
+-- I want to add more seed data later but for now this is enough
+
 CREATE DATABASE IF NOT EXISTS flexpath_final;
 USE flexpath_final;
 
@@ -59,7 +61,10 @@ INSERT INTO parts (name, category, brand, model, price, description, is_public, 
 ('AMD Ryzen 7 7800X3D', 'CPU', 'AMD', '7800X3D', 449.00, '8-core gaming CPU with 3D V-Cache', TRUE, 'user'),
 ('NVIDIA RTX 4070 Super', 'GPU', 'NVIDIA', '4070 Super', 599.00, 'Great 1440p performance', TRUE, 'user'),
 ('Corsair Vengeance 32GB DDR5', 'RAM', 'Corsair', 'CMK32GX5M2B5600C36', 109.00, '32GB (2x16) 5600MHz', TRUE, 'admin'),
-('Secret Sauce Custom Loop Kit', 'Cooler', 'Custom', 'Proto-1', 350.00, 'Experimental private cooling setup', FALSE, 'user');
+('Secret Sauce Custom Loop Kit', 'Cooler', 'Custom', 'Proto-1', 350.00, 'Experimental private cooling setup', FALSE, 'user'),
+('Corsair Vengeance 16GB DDR5', 'RAM', 'Corsair', 'CMK32GX5M2B5600C36', 59.00, '16GB 5600MHz', TRUE, 'admin'),
+('Nvidia GTX 1070 Founders Edition', 'GPU', 'Nvidia', 'CMK32GX5M2B5600C89', 200.00, '8GB Pascal', TRUE, 'admin');
+
 
 INSERT INTO builds (name, description, is_public, username) VALUES
 ('Budget 1440p Gaming Build', 'Solid 1440p performance under $1200', TRUE, 'user'),
