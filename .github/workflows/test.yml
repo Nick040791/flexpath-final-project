@@ -8,13 +8,13 @@ on:
       - MyFinalSubmission
 permissions:
   contents: read
-
-jobs:
-  test:
-    runs-on: ubuntu-latest
 defaults:
   run:
     working-directory: backend
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v7
