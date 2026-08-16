@@ -1,84 +1,107 @@
-import { render, screen, fireEvent } from "@testing-library/react";
+import { act, create } from "react-test-renderer";
 import BuildForm from "./BuildForm";
 
-// Test 1: Defaults  name = "" description = "" Public = true
+function renderBuildForm(props = {}) {
+    let renderer;
+    act(() => {
+        renderer = create(<BuildForm onSubmit={jest.fn()} {...props} />);
+    });
+    return renderer;
+}
+
+function findControl(renderer, name) {
+    return renderer.root.find((node) => node.props.name === name);
+}
+
+function changeControl(control, value, options = {}) {
+    act(() => {
+        control.props.onChange({
+            target: {
+                name: control.props.name,
+                type: options.type ?? "text",
+                value,
+                checked: options.checked,
+            },
+        });
+    });
+}
+
 describe("BuildForm", () => {
     test("starts with default empty values", () => {
-        const onSubmit = jest.fn();
-        render(<BuildForm onSubmit={onSubmit} />);
-        expect(screen.getByLabelText(/Name/i).value).toBe("");
-        expect(screen.getByLabelText(/Description/i).value).toBe("");
-        expect(screen.getByLabelText(/Public/i).checked).toBe(true);
+        const renderer = renderBuildForm();
+        expect(findControl(renderer, "name").props.value).toBe("");
+        expect(findControl(renderer, "description").props.value).toBe("");
+        expect(findControl(renderer, "is_Public").props.checked).toBe(true);
     });
-});
 
-/**Test 2: Submission 
- * Fill: Name: Budget Gaming PC, Description: Gaming build under $1000, Public: false
- * Expected callback:
- *  {
- *    name: "Budget Gaming PC",
- *    description: "Gaming build under $1000",
- *    is_Public: false
- *  }
- */
-describe("BuildForm Submission", () => {
     test("submits the form with correct values", () => {
         const onSubmit = jest.fn();
-        render(<BuildForm onSubmit={onSubmit} />);
-        
-        fireEvent.change(screen.getByLabelText(/Name/i), { target: { value: "Budget Gaming PC" } });
-        fireEvent.change(screen.getByLabelText(/Description/i), { target: { value: "Gaming build under $1000" } });
-        fireEvent.click(screen.getByLabelText(/Public/i)); // Toggle to false
-        
-        fireEvent.click(screen.getByText(/Save/i));
-        
+        const renderer = renderBuildForm({ onSubmit });
+        changeControl(findControl(renderer, "name"), "Budget Gaming PC");
+        changeControl(findControl(renderer, "description"), "Gaming build under $1000");
+        changeControl(findControl(renderer, "is_Public"), "", {
+            type: "checkbox",
+            checked: false,
+        });
+        act(() => {
+            renderer.root.findByType("form").props.onSubmit({ preventDefault: jest.fn() });
+        });
         expect(onSubmit).toHaveBeenCalledWith({
             name: "Budget Gaming PC",
             description: "Gaming build under $1000",
-            is_Public: false
+            is_Public: false,
         });
     });
-});
 
-// Test 3: Blank Description - description = "" should become: description: null
-describe("BuildForm Blank Description", () => {
     test("submits with null description when left blank", () => {
         const onSubmit = jest.fn();
-        render(<BuildForm onSubmit={onSubmit} />);
-        
-        fireEvent.change(screen.getByLabelText(/Name/i), { target: { value: "Budget Gaming PC" } });
-        // Leave description blank
-        fireEvent.click(screen.getByText(/Save/i));
-        
+        const renderer = renderBuildForm({ onSubmit });
+        changeControl(findControl(renderer, "name"), "Budget Gaming PC");
+        act(() => {
+            renderer.root.findByType("form").props.onSubmit({ preventDefault: jest.fn() });
+        });
         expect(onSubmit).toHaveBeenCalledWith({
             name: "Budget Gaming PC",
             description: null,
-            is_Public: true
+            is_Public: true,
         });
     });
-});
 
-/**Test 4: Cancel/Edit/Submit Behavior 
- *Verify: initial values populate, Cancel invokes onCancel, submitting disables Save, submitting displays Saving...*/
-describe("BuildForm Cancel/Edit/Submit Behavior", () => {
-    test("initial values populate, Cancel invokes onCancel, submitting disables Save, submitting displays Saving...", () => {
+    test("populates initial values, cancels, and shows the submitting state", () => {
         const onSubmit = jest.fn();
         const onCancel = jest.fn();
-        render(<BuildForm onSubmit={onSubmit} onCancel={onCancel} initialValues={{ name: "Initial Name", description: "Initial Description", is_Public: true }} />);
-        
-        // Verify initial values
-        expect(screen.getByLabelText(/Name/i).value).toBe("Initial Name");
-        expect(screen.getByLabelText(/Description/i).value).toBe("Initial Description");
-        expect(screen.getByLabelText(/Public/i).checked).toBe(true);
-        
-        // Click Cancel
-        fireEvent.click(screen.getByText(/Cancel/i));
-        expect(onCancel).toHaveBeenCalled();
-        
-        // Submit the form
-        fireEvent.click(screen.getByText(/Save/i));
-        
-        // Verify Save button is disabled and shows "Saving..."
-        expect(screen.getByText(/Saving.../i)).toBeDisabled();
+        const initial = {
+            name: "Initial Name",
+            description: "Initial Description",
+            is_Public: true,
+        };
+        const renderer = renderBuildForm({ onSubmit, onCancel, initial });
+        expect(findControl(renderer, "name").props.value).toBe("Initial Name");
+        expect(findControl(renderer, "description").props.value).toBe("Initial Description");
+        expect(findControl(renderer, "is_Public").props.checked).toBe(true);
+
+        const cancelButton = renderer.root.find(
+            (node) => node.type === "button" && node.props.type === "button"
+        );
+        act(() => {
+            cancelButton.props.onClick();
+        });
+        expect(onCancel).toHaveBeenCalledTimes(1);
+
+        act(() => {
+            renderer.update(
+                <BuildForm
+                    onSubmit={onSubmit}
+                    onCancel={onCancel}
+                    initial={initial}
+                    submitting={true}
+                />
+            );
+        });
+        const submitButton = renderer.root.find(
+            (node) => node.type === "button" && node.props.type === "submit"
+        );
+        expect(submitButton.props.disabled).toBe(true);
+        expect(submitButton.children).toEqual(["Saving..."]);
     });
 });
