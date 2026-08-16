@@ -24,6 +24,9 @@ jobs:
           distribution: temurin
           java-version: '26'
           cache: maven
-      - name: Run tests
+          cache-dependency-path: backend/pom.xml
+
+      - name: Build and Run tests
         run: mvn clean verify
+
 
