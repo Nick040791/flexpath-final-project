@@ -28,3 +28,4 @@ dist-ssr
 backend/.idea
 backend/target
 /frontend/coverage
+/frontend/coverage
