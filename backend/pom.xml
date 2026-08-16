@@ -40,7 +40,7 @@
     <properties>
 
         <!-- Application Java version -->
-        <java.version>17</java.version>
+        <java.version>26</java.version>
 
         <!--
             Rubric target:
