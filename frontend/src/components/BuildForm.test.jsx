@@ -1,8 +1,16 @@
-/**Test 1: Defaults 
- * name = ""
- * description = ""
- * Public = true
-*/
+import { render, screen, fireEvent } from "@testing-library/react";
+import BuildForm from "./BuildForm";
+
+// Test 1: Defaults  name = "" description = "" Public = true
+describe("BuildForm", () => {
+    test("starts with default empty values", () => {
+        const onSubmit = jest.fn();
+        render(<BuildForm onSubmit={onSubmit} />);
+        expect(screen.getByLabelText(/Name/i).value).toBe("");
+        expect(screen.getByLabelText(/Description/i).value).toBe("");
+        expect(screen.getByLabelText(/Public/i).checked).toBe(true);
+    });
+});
 
 /**Test 2: Submission 
  * Fill:
