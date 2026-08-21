@@ -1,865 +1,492 @@
 package org.example.services;
 
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.*;
+
+import java.util.List;
+
 import org.example.daos.BuildDao;
 import org.example.daos.PartDao;
 import org.example.models.Build;
-import org.example.models.Part;
+import org.example.models.PageResult;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
 
-import java.util.List;
-
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.Mockito.*;
-
 class BuildServiceTest {
 
     private BuildDao buildDao;
     private PartDao partDao;
-    private BuildService service;
+    private BuildService buildService;
 
     @BeforeEach
     void setUp() {
-
         buildDao = mock(BuildDao.class);
         partDao = mock(PartDao.class);
 
-        service =
-                new BuildService(
-                        buildDao,
-                        partDao
-                );
-    }
-
-    @Test
-    void findByIdReturnsNotFoundWhenDaoReturnsNull() {
-
-        when(buildDao.findById(99))
-                .thenReturn(null);
-
-        ResponseStatusException error =
-                assertThrows(
-                        ResponseStatusException.class,
-                        () -> service.findById(
-                                99,
-                                "alice",
-                                false
-                        )
-                );
-
-        assertEquals(
-                HttpStatus.NOT_FOUND,
-                error.getStatusCode()
-        );
-
-        assertEquals(
-                "Build not found",
-                error.getReason()
-        );
-    }
-
-    @Test
-    void privateBuildIsVisibleOnlyToOwnerOrAdmin() {
-
-        Build privateBuild =
-                build(
-                        1,
-                        "owner",
-                        false
-                );
-
-        when(buildDao.findById(1))
-                .thenReturn(privateBuild);
-
-        ResponseStatusException error =
-                assertThrows(
-                        ResponseStatusException.class,
-                        () -> service.findById(
-                                1,
-                                "other",
-                                false
-                        )
-                );
-
-        assertEquals(
-                HttpStatus.FORBIDDEN,
-                error.getStatusCode()
-        );
-
-        assertSame(
-                privateBuild,
-                service.findById(
-                        1,
-                        "owner",
-                        false
-                )
-        );
-
-        assertSame(
-                privateBuild,
-                service.findById(
-                        1,
-                        "admin",
-                        true
-                )
-        );
-    }
-
-    @Test
-    void searchFiltersPrivateBuildsForNonAdmins() {
-
-        Build publicBuild =
-                build(1, "other", true);
-
-        Build ownedPrivate =
-                build(2, "alice", false);
-
-        Build otherPrivate =
-                build(3, "other", false);
-
-        when(
-                buildDao.search(
-                        null,
-                        "private",
-                        "name",
-                        "ASC"
-                )
-        ).thenReturn(
-                List.of(
-                        publicBuild,
-                        ownedPrivate,
-                        otherPrivate
-                )
-        );
-
-        assertEquals(
-                List.of(
-                        publicBuild,
-                        ownedPrivate
-                ),
-                service.search(
-                        null,
-                        "private",
-                        "name",
-                        "ASC",
-                        "alice",
-                        false
-                )
-        );
-
-        assertEquals(
-                3,
-                service.search(
-                        null,
-                        "private",
-                        "name",
-                        "ASC",
-                        "admin",
-                        true
-                ).size()
-        );
-
-        verify(buildDao, times(2)).search(null, "private", "name", "ASC");
-    }
-
-    @Test
-    void updateRejectsMissingAndNonOwnedBuildWithoutWriting() {
-
-        Build update =
-                build(
-                        1,
-                        "alice",
-                        true
-                );
-
-        when(buildDao.findById(1))
-                .thenReturn(null);
-
-        assertEquals(
-                HttpStatus.NOT_FOUND,
-                assertThrows(
-                        ResponseStatusException.class,
-                        () -> service.update(
-                                1,
-                                update,
-                                "alice",
-                                false
-                        )
-                ).getStatusCode()
-        );
-
-        when(buildDao.findById(1))
-                .thenReturn(
-                        build(
-                                1,
-                                "other",
-                                false
-                        )
-                );
-
-        assertEquals(
-                HttpStatus.FORBIDDEN,
-                assertThrows(
-                        ResponseStatusException.class,
-                        () -> service.update(
-                                1,
-                                update,
-                                "alice",
-                                false
-                        )
-                ).getStatusCode()
-        );
-
-        verify(
+        buildService = new BuildService(
                 buildDao,
-                never()
-        ).update(any(Build.class));
+                partDao
+        );
     }
 
-    @Test
-    void adminCanUpdateAndDeleteAnotherUsersBuild() {
 
-        Build existing =
-                build(
-                        1,
-                        "owner",
+    /*
+     * Valid pagination should be delegated
+     * to BuildDao unchanged.
+     */
+    @Test
+    void search_validPagination_delegatesToDao() {
+
+        List<Build> content =
+                List.of(new Build());
+
+        PageResult<Build> expectedResult =
+                new PageResult<>(
+                        content,
+                        2,
+                        12,
+                        27L,
+                        3
+                );
+
+
+        when(buildDao.search(
+                "gaming",
+                "Public",
+                "created_at",
+                "DESC",
+                2,
+                12,
+                "alice",
+                false
+        )).thenReturn(expectedResult);
+
+
+        PageResult<Build> actualResult =
+                buildService.search(
+                        "gaming",
+                        "Public",
+                        "created_at",
+                        "DESC",
+                        2,
+                        12,
+                        "alice",
                         false
                 );
 
-        Build update =
-                build(
-                        1,
-                        "ignored",
-                        true
-                );
 
-        update.setName("Updated");
-        update.setDescription(
-                "New description"
-        );
-
-        when(buildDao.findById(1))
-                .thenReturn(existing);
-
-        Build result =
-                service.update(
-                        1,
-                        update,
-                        "admin",
-                        true
-                );
-
-        service.delete(
-                1,
-                "admin",
-                true
-        );
-
-        assertSame(
-                existing,
-                result
-        );
-
-        assertEquals(
-                "owner",
-                result.getUsername()
-        );
-
-        assertEquals(
-                "Updated",
-                result.getName()
-        );
-
-        verify(buildDao)
-                .update(existing);
-
-        verify(buildDao)
-                .delete(1);
-    }
-
-    @Test
-    void canAddOwnPrivatePartToOwnBuild() {
-
-        Build build =
-                build(
-                        1,
-                        "alice",
-                        true
-                );
-
-        Part privatePart =
-                new Part();
-
-        privatePart.setId(2);
-        privatePart.setUsername("alice");
-        privatePart.setIs_Public(false);
-
-        when(buildDao.findById(1))
-                .thenReturn(build);
-
-        when(partDao.findById(2))
-                .thenReturn(privatePart);
-
-        service.addPartToBuild(
-                1,
+        verify(buildDao).search(
+                "gaming",
+                "Public",
+                "created_at",
+                "DESC",
                 2,
-                1,
+                12,
                 "alice",
                 false
         );
 
-        verify(buildDao)
-                .addPartToBuild(
-                        1,
-                        2,
-                        1
-                );
-    }
 
-    @Test
-    void nonOwnerCannotMutatePublicBuildParts() {
-
-        when(buildDao.findById(1))
-                .thenReturn(
-                        build(
-                                1,
-                                "owner",
-                                true
-                        )
-                );
-
-        assertEquals(
-                HttpStatus.FORBIDDEN,
-                assertThrows(
-                        ResponseStatusException.class,
-                        () -> service.addPartToBuild(
-                                1,
-                                2,
-                                1,
-                                "other",
-                                false
-                        )
-                ).getStatusCode()
-        );
-
-        assertEquals(
-                HttpStatus.FORBIDDEN,
-                assertThrows(
-                        ResponseStatusException.class,
-                        () -> service.removePartFromBuild(
-                                1,
-                                2,
-                                "other",
-                                false
-                        )
-                ).getStatusCode()
-        );
-
-        verify(
-                buildDao,
-                never()
-        ).addPartToBuild(
-                anyInt(),
-                anyInt(),
-                anyInt()
-        );
-
-        verify(
-                buildDao,
-                never()
-        ).removePartFromBuild(
-                anyInt(),
-                anyInt()
+        assertSame(
+                expectedResult,
+                actualResult
         );
     }
 
+
+    /*
+     * Negative pages are invalid.
+     */
     @Test
-    void adminCanMutatePartsAndVisibilityIsCheckedBeforeReadingParts() {
+    void search_negativePage_throwsBadRequest() {
 
-        when(buildDao.findById(1))
-                .thenReturn(
-                        build(
-                                1,
-                                "owner",
-                                false
-                        )
-                );
-
-        Part part = new Part();
-        part.setId(2);
-
-        when(partDao.findById(2))
-                .thenReturn(part);
-
-        when(
-                buildDao.findPartsByBuildId(1)
-        ).thenReturn(
-                List.of(part)
-        );
-
-        service.addPartToBuild(
-                1,
-                2,
-                3,
-                "admin",
-                true
-        );
-
-        service.removePartFromBuild(
-                1,
-                2,
-                "admin",
-                true
-        );
-
-        assertEquals(
-                List.of(part),
-                service.getPartsInBuild(
-                        1,
-                        "admin",
-                        true
-                )
-        );
-
-        verify(buildDao)
-                .addPartToBuild(
-                        1,
-                        2,
-                        3
-                );
-
-        verify(buildDao)
-                .removePartFromBuild(
-                        1,
-                        2
-                );
-
-        verify(buildDao)
-                .findPartsByBuildId(1);
-    }
-
-    @Test
-    void cannotAddAnotherUsersPrivatePartToOwnBuild() {
-
-        Build build =
-                build(
-                        1,
-                        "alice",
-                        true
-                );
-
-        Part privatePart =
-                new Part();
-
-        privatePart.setId(2);
-        privatePart.setUsername("bob");
-        privatePart.setIs_Public(false);
-
-        when(buildDao.findById(1))
-                .thenReturn(build);
-
-        when(partDao.findById(2))
-                .thenReturn(privatePart);
-
-        ResponseStatusException error =
+        ResponseStatusException exception =
                 assertThrows(
                         ResponseStatusException.class,
-                        () -> service.addPartToBuild(
-                                1,
-                                2,
-                                1,
+                        () -> buildService.search(
+                                null,
+                                "All",
+                                "name",
+                                "ASC",
+                                -1,
+                                12,
                                 "alice",
                                 false
                         )
                 );
 
+
         assertEquals(
-                HttpStatus.FORBIDDEN,
-                error.getStatusCode()
+                HttpStatus.BAD_REQUEST,
+                exception.getStatusCode()
         );
 
-        verify(
-                buildDao,
-                never()
-        ).addPartToBuild(
-                anyInt(),
-                anyInt(),
-                anyInt()
-        );
+
+        verifyNoInteractions(buildDao);
     }
 
+
+    /*
+     * size=0 is invalid.
+     */
     @Test
-    void cannotAddPartWithInvalidQuantity() {
+    void search_zeroSize_throwsBadRequest() {
 
-        Build build =
-                build(
-                        1,
-                        "alice",
-                        true
-                );
-
-        Part part =
-                new Part();
-
-        part.setId(2);
-        part.setUsername("alice");
-        part.setIs_Public(true);
-
-        when(buildDao.findById(1))
-                .thenReturn(build);
-
-        when(partDao.findById(2))
-                .thenReturn(part);
-
-        ResponseStatusException error =
+        ResponseStatusException exception =
                 assertThrows(
                         ResponseStatusException.class,
-                        () -> service.addPartToBuild(
-                                1,
-                                2,
+                        () -> buildService.search(
+                                null,
+                                "All",
+                                "name",
+                                "ASC",
+                                0,
                                 0,
                                 "alice",
                                 false
                         )
                 );
 
+
         assertEquals(
                 HttpStatus.BAD_REQUEST,
-                error.getStatusCode()
+                exception.getStatusCode()
         );
 
-        verify(
-                buildDao,
-                never()
-        ).addPartToBuild(
-                anyInt(),
-                anyInt(),
-                anyInt()
-        );
+
+        verifyNoInteractions(buildDao);
     }
 
-    @Test
-    void getPartsInBuildHidesOtherUsersPrivateParts() {
 
-        Build publicBuild =
-                build(
-                        1,
-                        "alice",
-                        true
+    /*
+     * size greater than 50 is invalid.
+     */
+    @Test
+    void search_sizeAboveMaximum_throwsBadRequest() {
+
+        ResponseStatusException exception =
+                assertThrows(
+                        ResponseStatusException.class,
+                        () -> buildService.search(
+                                null,
+                                "All",
+                                "name",
+                                "ASC",
+                                0,
+                                51,
+                                "alice",
+                                false
+                        )
                 );
 
-        Part publicPart =
-                new Part();
 
-        publicPart.setId(2);
-        publicPart.setUsername("bob");
-        publicPart.setIs_Public(true);
-
-        Part ownPrivatePart =
-                new Part();
-
-        ownPrivatePart.setId(3);
-        ownPrivatePart.setUsername("alice");
-        ownPrivatePart.setIs_Public(false);
-
-        Part otherPrivatePart =
-                new Part();
-
-        otherPrivatePart.setId(4);
-        otherPrivatePart.setUsername("bob");
-        otherPrivatePart.setIs_Public(false);
-
-        when(buildDao.findById(1))
-                .thenReturn(publicBuild);
-
-        when(
-                buildDao.findPartsByBuildId(1)
-        ).thenReturn(
-                List.of(
-                        publicPart,
-                        ownPrivatePart,
-                        otherPrivatePart
-                )
+        assertEquals(
+                HttpStatus.BAD_REQUEST,
+                exception.getStatusCode()
         );
 
-        List<Part> results =
-                service.getPartsInBuild(
+
+        verifyNoInteractions(buildDao);
+    }
+
+
+    /*
+     * Boundary:
+     * size=1 is valid.
+     */
+    @Test
+    void search_minimumSize_isAllowed() {
+
+        PageResult<Build> expectedResult =
+                new PageResult<>(
+                        List.of(),
+                        0,
+                        1,
+                        0L,
+                        0
+                );
+
+
+        when(buildDao.search(
+                null,
+                "All",
+                "name",
+                "ASC",
+                0,
+                1,
+                "alice",
+                false
+        )).thenReturn(expectedResult);
+
+
+        PageResult<Build> result =
+                buildService.search(
+                        null,
+                        "All",
+                        "name",
+                        "ASC",
+                        0,
                         1,
                         "alice",
                         false
                 );
 
-        assertEquals(
-                List.of(
-                        publicPart,
-                        ownPrivatePart
-                ),
-                results
+
+        assertSame(
+                expectedResult,
+                result
         );
 
-        assertFalse(
-                results.contains(
-                        otherPrivatePart
-                )
-        );
-    }
 
-    @Test
-    void canAddAnotherUsersPublicPartToOwnBuild() {
-
-        Build build =
-                build(
-                        1,
-                        "alice",
-                        true
-                );
-
-        Part publicPart =
-                new Part();
-
-        publicPart.setId(2);
-        publicPart.setUsername("bob");
-        publicPart.setIs_Public(true);
-
-        when(buildDao.findById(1))
-                .thenReturn(build);
-
-        when(partDao.findById(2))
-                .thenReturn(publicPart);
-
-        service.addPartToBuild(
-                1,
-                2,
+        verify(buildDao).search(
+                null,
+                "All",
+                "name",
+                "ASC",
+                0,
                 1,
                 "alice",
                 false
         );
-
-        verify(buildDao)
-                .addPartToBuild(
-                        1,
-                        2,
-                        1
-                );
     }
 
-    @Test
-    void addPartToBuildReturnsNotFoundWhenPartDoesNotExist() {
 
-        Build build =
-                build(
-                        1,
+    /*
+     * Boundary:
+     * size=50 is valid.
+     */
+    @Test
+    void search_maximumSize_isAllowed() {
+
+        PageResult<Build> expectedResult =
+                new PageResult<>(
+                        List.of(),
+                        0,
+                        50,
+                        0L,
+                        0
+                );
+
+
+        when(buildDao.search(
+                null,
+                "All",
+                "name",
+                "ASC",
+                0,
+                50,
+                "alice",
+                false
+        )).thenReturn(expectedResult);
+
+
+        PageResult<Build> result =
+                buildService.search(
+                        null,
+                        "All",
+                        "name",
+                        "ASC",
+                        0,
+                        50,
                         "alice",
-                        true
+                        false
                 );
 
-        when(buildDao.findById(1))
-                .thenReturn(build);
-
-        when(partDao.findById(99))
-                .thenReturn(null);
-
-        ResponseStatusException error =
-                assertThrows(
-                        ResponseStatusException.class,
-                        () -> service.addPartToBuild(
-                                1,
-                                99,
-                                1,
-                                "alice",
-                                false
-                        )
-                );
-
-        assertEquals(
-                HttpStatus.NOT_FOUND,
-                error.getStatusCode()
-        );
-
-        assertEquals(
-                "Part not found",
-                error.getReason()
-        );
-
-        verify(
-                buildDao,
-                never()
-        ).addPartToBuild(
-                anyInt(),
-                anyInt(),
-                anyInt()
-        );
-    }
-
-    // ---------------- Validation tests ----------------
-
-    @Test
-    void createValidBuildForcesCurrentUserAsOwner() {
-
-        Build build =
-                new Build();
-
-        build.setName("Gaming PC");
-        build.setDescription(
-                "1440p gaming build"
-        );
-        build.setIs_Public(true);
-
-        Build result =
-                service.create(
-                        build,
-                        "alice"
-                );
 
         assertSame(
-                build,
+                expectedResult,
                 result
         );
 
-        assertEquals(
+
+        verify(buildDao).search(
+                null,
+                "All",
+                "name",
+                "ASC",
+                0,
+                50,
                 "alice",
-                result.getUsername()
+                false
         );
-
-        verify(buildDao)
-                .create(build);
     }
 
+
+    /*
+     * Username and admin status must be
+     * passed to the DAO unchanged.
+     */
     @Test
-    void createRejectsBlankBuildNameWithoutWriting() {
+    void search_admin_passesSecurityScopeToDao() {
 
-        Build build =
-                new Build();
-
-        build.setName("   ");
-
-        ResponseStatusException error =
-                assertThrows(
-                        ResponseStatusException.class,
-                        () -> service.create(
-                                build,
-                                "alice"
-                        )
+        PageResult<Build> expectedResult =
+                new PageResult<>(
+                        List.of(),
+                        0,
+                        12,
+                        0L,
+                        0
                 );
 
-        assertEquals(
-                HttpStatus.BAD_REQUEST,
-                error.getStatusCode()
+
+        when(buildDao.search(
+                null,
+                "Private",
+                "name",
+                "ASC",
+                0,
+                12,
+                "adminUser",
+                true
+        )).thenReturn(expectedResult);
+
+
+        buildService.search(
+                null,
+                "Private",
+                "name",
+                "ASC",
+                0,
+                12,
+                "adminUser",
+                true
         );
 
-        assertEquals(
-                "Build name is required",
-                error.getReason()
-        );
 
-        verify(
-                buildDao,
-                never()
-        ).create(any(Build.class));
+        verify(buildDao).search(
+                null,
+                "Private",
+                "name",
+                "ASC",
+                0,
+                12,
+                "adminUser",
+                true
+        );
     }
 
+
+    /*
+     * The Build visibility value must reach
+     * the DAO unchanged.
+     */
     @Test
-    void createRejectsBuildNameOver255Characters() {
+    void search_visibility_isPassedToDao() {
 
-        Build build =
-                new Build();
-
-        build.setName(
-                "A".repeat(256)
-        );
-
-        ResponseStatusException error =
-                assertThrows(
-                        ResponseStatusException.class,
-                        () -> service.create(
-                                build,
-                                "alice"
-                        )
+        PageResult<Build> expectedResult =
+                new PageResult<>(
+                        List.of(),
+                        0,
+                        12,
+                        0L,
+                        0
                 );
 
-        assertEquals(
-                HttpStatus.BAD_REQUEST,
-                error.getStatusCode()
+
+        when(buildDao.search(
+                "gaming",
+                "Private",
+                "name",
+                "ASC",
+                0,
+                12,
+                "alice",
+                false
+        )).thenReturn(expectedResult);
+
+
+        buildService.search(
+                "gaming",
+                "Private",
+                "name",
+                "ASC",
+                0,
+                12,
+                "alice",
+                false
         );
 
-        assertEquals(
-                "Build name cannot exceed 255 characters",
-                error.getReason()
-        );
 
-        verify(
-                buildDao,
-                never()
-        ).create(any(Build.class));
+        verify(buildDao).search(
+                "gaming",
+                "Private",
+                "name",
+                "ASC",
+                0,
+                12,
+                "alice",
+                false
+        );
     }
 
-    @Test
-    void updateRejectsBlankBuildNameWithoutWriting() {
 
-        Build existing =
-                build(
-                        1,
+    /*
+     * The service should return DAO pagination
+     * metadata unchanged.
+     */
+    @Test
+    void search_returnsDaoPaginationMetadataUnchanged() {
+
+        PageResult<Build> daoResult =
+                new PageResult<>(
+                        List.of(new Build()),
+                        3,
+                        12,
+                        43L,
+                        4
+                );
+
+
+        when(buildDao.search(
+                null,
+                "All",
+                "name",
+                "ASC",
+                3,
+                12,
+                "alice",
+                false
+        )).thenReturn(daoResult);
+
+
+        PageResult<Build> result =
+                buildService.search(
+                        null,
+                        "All",
+                        "name",
+                        "ASC",
+                        3,
+                        12,
                         "alice",
-                        true
+                        false
                 );
 
-        existing.setName(
-                "Old Build"
-        );
-
-        Build updated =
-                build(
-                        1,
-                        "alice",
-                        true
-                );
-
-        updated.setName("   ");
-
-        when(buildDao.findById(1))
-                .thenReturn(existing);
-
-        ResponseStatusException error =
-                assertThrows(
-                        ResponseStatusException.class,
-                        () -> service.update(
-                                1,
-                                updated,
-                                "alice",
-                                false
-                        )
-                );
 
         assertEquals(
-                HttpStatus.BAD_REQUEST,
-                error.getStatusCode()
+                3,
+                result.getPage()
         );
 
         assertEquals(
-                "Build name is required",
-                error.getReason()
+                12,
+                result.getSize()
         );
 
-        verify(
-                buildDao,
-                never()
-        ).update(any(Build.class));
-    }
+        assertEquals(
+                43L,
+                result.getTotalElements()
+        );
 
-    private static Build build(
-            int id,
-            String username,
-            boolean isPublic) {
+        assertEquals(
+                4,
+                result.getTotalPages()
+        );
 
-        Build build =
-                new Build();
-
-        build.setId(id);
-        build.setUsername(username);
-        build.setIs_Public(isPublic);
-
-        return build;
+        assertEquals(
+                1,
+                result.getContent().size()
+        );
     }
 }

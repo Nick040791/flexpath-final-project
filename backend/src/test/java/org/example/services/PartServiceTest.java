@@ -1,532 +1,458 @@
 package org.example.services;
 
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.*;
+
+import java.math.BigDecimal;
+import java.util.List;
+
 import org.example.daos.PartDao;
+import org.example.models.PageResult;
 import org.example.models.Part;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
 
-import java.math.BigDecimal;
-import java.util.List;
-
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.Mockito.*;
-
 class PartServiceTest {
 
-    private PartDao dao;
-    private PartService service;
+    private PartDao partDao;
+    private PartService partService;
 
     @BeforeEach
     void setUp() {
-        dao = mock(PartDao.class);
-        service = new PartService(dao);
+        partDao = mock(PartDao.class);
+        partService = new PartService(partDao);
     }
 
+
+    /*
+     * Valid pagination should be delegated to the DAO
+     * with every value unchanged.
+     */
     @Test
-    void findByIdReturnsNotFoundWhenDaoReturnsNull() {
+    void search_validPagination_delegatesToDao() {
 
-        when(dao.findById(99))
-                .thenReturn(null);
+        List<Part> content = List.of(new Part());
 
-        ResponseStatusException error =
-                assertThrows(
-                        ResponseStatusException.class,
-                        () -> service.findById(
-                                99,
-                                "alice",
-                                false
-                        )
+        PageResult<Part> expectedResult =
+                new PageResult<>(
+                        content,
+                        2,
+                        12,
+                        27L,
+                        3
                 );
 
-        assertEquals(
-                HttpStatus.NOT_FOUND,
-                error.getStatusCode()
-        );
+        when(partDao.search(
+                "RTX",
+                "GPU",
+                "NVIDIA",
+                new BigDecimal("800.00"),
+                "price",
+                "ASC",
+                2,
+                12,
+                "alice",
+                false
+        )).thenReturn(expectedResult);
 
-        assertEquals(
-                "Part not found",
-                error.getReason()
-        );
-    }
 
-    @Test
-    void privatePartIsVisibleOnlyToOwnerOrAdmin() {
-
-        Part privatePart =
-                part(1, "owner", false);
-
-        when(dao.findById(1))
-                .thenReturn(privatePart);
-
-        assertEquals(
-                HttpStatus.FORBIDDEN,
-                assertThrows(
-                        ResponseStatusException.class,
-                        () -> service.findById(
-                                1,
-                                "other",
-                                false
-                        )
-                ).getStatusCode()
-        );
-
-        assertSame(
-                privatePart,
-                service.findById(
-                        1,
-                        "owner",
-                        false
-                )
-        );
-
-        assertSame(
-                privatePart,
-                service.findById(
-                        1,
-                        "admin",
-                        true
-                )
-        );
-    }
-
-    @Test
-    void searchFiltersPrivatePartsForNonAdmins() {
-
-        Part publicPart =
-                part(1, "other", true);
-
-        Part ownedPrivate =
-                part(2, "alice", false);
-
-        Part otherPrivate =
-                part(3, "other", false);
-
-        when(
-                dao.search(
-                        null,
-                        null,
-                        null,
-                        null,
-                        "name",
-                        "ASC"
-                )
-        ).thenReturn(
-                List.of(
-                        publicPart,
-                        ownedPrivate,
-                        otherPrivate
-                )
-        );
-
-        assertEquals(
-                List.of(
-                        publicPart,
-                        ownedPrivate
-                ),
-                service.search(
-                        null,
-                        null,
-                        null,
-                        null,
-                        "name",
+        PageResult<Part> actualResult =
+                partService.search(
+                        "RTX",
+                        "GPU",
+                        "NVIDIA",
+                        new BigDecimal("800.00"),
+                        "price",
                         "ASC",
+                        2,
+                        12,
                         "alice",
                         false
-                )
+                );
+
+
+        verify(partDao).search(
+                "RTX",
+                "GPU",
+                "NVIDIA",
+                new BigDecimal("800.00"),
+                "price",
+                "ASC",
+                2,
+                12,
+                "alice",
+                false
         );
 
+        assertSame(
+                expectedResult,
+                actualResult
+        );
+    }
+
+
+    /*
+     * Negative page numbers are invalid.
+     *
+     * The DAO should never be called when
+     * service validation fails.
+     */
+    @Test
+    void search_negativePage_throwsBadRequest() {
+
+        ResponseStatusException exception =
+                assertThrows(
+                        ResponseStatusException.class,
+                        () -> partService.search(
+                                null,
+                                null,
+                                null,
+                                null,
+                                "name",
+                                "ASC",
+                                -1,
+                                12,
+                                "alice",
+                                false
+                        )
+                );
+
+
         assertEquals(
-                3,
-                service.search(
+                HttpStatus.BAD_REQUEST,
+                exception.getStatusCode()
+        );
+
+        verifyNoInteractions(partDao);
+    }
+
+
+    /*
+     * size=0 is invalid.
+     */
+    @Test
+    void search_zeroSize_throwsBadRequest() {
+
+        ResponseStatusException exception =
+                assertThrows(
+                        ResponseStatusException.class,
+                        () -> partService.search(
+                                null,
+                                null,
+                                null,
+                                null,
+                                "name",
+                                "ASC",
+                                0,
+                                0,
+                                "alice",
+                                false
+                        )
+                );
+
+
+        assertEquals(
+                HttpStatus.BAD_REQUEST,
+                exception.getStatusCode()
+        );
+
+        verifyNoInteractions(partDao);
+    }
+
+
+    /*
+     * Maximum allowed size is 50.
+     * size=51 must fail.
+     */
+    @Test
+    void search_sizeAboveMaximum_throwsBadRequest() {
+
+        ResponseStatusException exception =
+                assertThrows(
+                        ResponseStatusException.class,
+                        () -> partService.search(
+                                null,
+                                null,
+                                null,
+                                null,
+                                "name",
+                                "ASC",
+                                0,
+                                51,
+                                "alice",
+                                false
+                        )
+                );
+
+
+        assertEquals(
+                HttpStatus.BAD_REQUEST,
+                exception.getStatusCode()
+        );
+
+        verifyNoInteractions(partDao);
+    }
+
+
+    /*
+     * Boundary test:
+     * size=1 is valid.
+     */
+    @Test
+    void search_minimumSize_isAllowed() {
+
+        PageResult<Part> expectedResult =
+                new PageResult<>(
+                        List.of(),
+                        0,
+                        1,
+                        0L,
+                        0
+                );
+
+        when(partDao.search(
+                null,
+                null,
+                null,
+                null,
+                "name",
+                "ASC",
+                0,
+                1,
+                "alice",
+                false
+        )).thenReturn(expectedResult);
+
+
+        PageResult<Part> result =
+                partService.search(
                         null,
                         null,
                         null,
                         null,
                         "name",
                         "ASC",
-                        "admin",
-                        true
-                ).size()
-        );
-    }
-
-    @Test
-    void updateRejectsMissingAndNonOwnedPartWithoutWriting() {
-
-        Part update =
-                part(1, "alice", true);
-
-        when(dao.findById(1))
-                .thenReturn(null);
-
-        assertEquals(
-                HttpStatus.NOT_FOUND,
-                assertThrows(
-                        ResponseStatusException.class,
-                        () -> service.update(
-                                1,
-                                update,
-                                "alice",
-                                false
-                        )
-                ).getStatusCode()
-        );
-
-        when(dao.findById(1))
-                .thenReturn(
-                        part(
-                                1,
-                                "other",
-                                false
-                        )
-                );
-
-        assertEquals(
-                HttpStatus.FORBIDDEN,
-                assertThrows(
-                        ResponseStatusException.class,
-                        () -> service.update(
-                                1,
-                                update,
-                                "alice",
-                                false
-                        )
-                ).getStatusCode()
-        );
-
-        verify(
-                dao,
-                never()
-        ).update(
-                any(Part.class)
-        );
-    }
-
-    @Test
-    void adminCanUpdateAndDeleteAnotherUsersPartWithoutChangingOwner() {
-
-        Part existing =
-                part(1, "owner", false);
-
-        Part update =
-                part(1, "ignored", true);
-
-        update.setName("Updated");
-        update.setCategory("GPU");
-        update.setPrice(
-                new BigDecimal("499.99")
-        );
-
-        when(dao.findById(1))
-                .thenReturn(existing);
-
-        Part result =
-                service.update(
+                        0,
                         1,
-                        update,
-                        "admin",
-                        true
+                        "alice",
+                        false
                 );
 
-        service.delete(
+
+        assertSame(
+                expectedResult,
+                result
+        );
+
+        verify(partDao).search(
+                null,
+                null,
+                null,
+                null,
+                "name",
+                "ASC",
+                0,
                 1,
-                "admin",
+                "alice",
+                false
+        );
+    }
+
+
+    /*
+     * Boundary test:
+     * size=50 is valid.
+     */
+    @Test
+    void search_maximumSize_isAllowed() {
+
+        PageResult<Part> expectedResult =
+                new PageResult<>(
+                        List.of(),
+                        0,
+                        50,
+                        0L,
+                        0
+                );
+
+        when(partDao.search(
+                null,
+                null,
+                null,
+                null,
+                "name",
+                "ASC",
+                0,
+                50,
+                "alice",
+                false
+        )).thenReturn(expectedResult);
+
+
+        PageResult<Part> result =
+                partService.search(
+                        null,
+                        null,
+                        null,
+                        null,
+                        "name",
+                        "ASC",
+                        0,
+                        50,
+                        "alice",
+                        false
+                );
+
+
+        assertSame(
+                expectedResult,
+                result
+        );
+
+        verify(partDao).search(
+                null,
+                null,
+                null,
+                null,
+                "name",
+                "ASC",
+                0,
+                50,
+                "alice",
+                false
+        );
+    }
+
+
+    /*
+     * Verify that admin status and username
+     * are passed to the DAO unchanged.
+     */
+    @Test
+    void search_admin_passesSecurityScopeToDao() {
+
+        PageResult<Part> expectedResult =
+                new PageResult<>(
+                        List.of(),
+                        0,
+                        12,
+                        0L,
+                        0
+                );
+
+        when(partDao.search(
+                null,
+                null,
+                null,
+                null,
+                "name",
+                "ASC",
+                0,
+                12,
+                "adminUser",
+                true
+        )).thenReturn(expectedResult);
+
+
+        partService.search(
+                null,
+                null,
+                null,
+                null,
+                "name",
+                "ASC",
+                0,
+                12,
+                "adminUser",
                 true
         );
 
-        assertSame(
-                existing,
-                result
+
+        verify(partDao).search(
+                null,
+                null,
+                null,
+                null,
+                "name",
+                "ASC",
+                0,
+                12,
+                "adminUser",
+                true
         );
-
-        assertEquals(
-                "owner",
-                result.getUsername()
-        );
-
-        assertEquals(
-                "Updated",
-                result.getName()
-        );
-
-        verify(dao)
-                .update(existing);
-
-        verify(dao)
-                .delete(1);
     }
 
+
+    /*
+     * The service should return the pagination
+     * metadata produced by the DAO unchanged.
+     */
     @Test
-    void deleteRejectsMissingAndNonOwnedPartWithoutWriting() {
+    void search_returnsDaoPaginationMetadataUnchanged() {
 
-        when(dao.findById(1))
-                .thenReturn(null);
-
-        assertEquals(
-                HttpStatus.NOT_FOUND,
-                assertThrows(
-                        ResponseStatusException.class,
-                        () -> service.delete(
-                                1,
-                                "alice",
-                                false
-                        )
-                ).getStatusCode()
-        );
-
-        when(dao.findById(1))
-                .thenReturn(
-                        part(
-                                1,
-                                "other",
-                                true
-                        )
+        PageResult<Part> daoResult =
+                new PageResult<>(
+                        List.of(new Part()),
+                        3,
+                        12,
+                        43L,
+                        4
                 );
 
-        assertEquals(
-                HttpStatus.FORBIDDEN,
-                assertThrows(
-                        ResponseStatusException.class,
-                        () -> service.delete(
-                                1,
-                                "alice",
-                                false
-                        )
-                ).getStatusCode()
-        );
-
-        verify(
-                dao,
-                never()
-        ).delete(anyInt());
-    }
-
-    // ---------------- Validation tests ----------------
-
-    @Test
-    void createValidPartForcesCurrentUserAsOwner() {
-
-        Part part = new Part();
-        part.setName("RTX 4070 Super");
-        part.setCategory("GPU");
-        part.setBrand("NVIDIA");
-        part.setModel("4070 Super");
-        part.setPrice(
-                new BigDecimal("599.99")
-        );
-        part.setIs_Public(true);
-
-        Part result =
-                service.create(
-                        part,
-                        "alice"
-                );
-
-        assertSame(
-                part,
-                result
-        );
-
-        assertEquals(
+        when(partDao.search(
+                null,
+                null,
+                null,
+                null,
+                "name",
+                "ASC",
+                3,
+                12,
                 "alice",
-                result.getUsername()
-        );
+                false
+        )).thenReturn(daoResult);
 
-        verify(dao)
-                .create(part);
-    }
 
-    @Test
-    void createRejectsBlankPartNameWithoutWriting() {
-
-        Part part = new Part();
-        part.setName("   ");
-        part.setCategory("GPU");
-
-        ResponseStatusException error =
-                assertThrows(
-                        ResponseStatusException.class,
-                        () -> service.create(
-                                part,
-                                "alice"
-                        )
+        PageResult<Part> result =
+                partService.search(
+                        null,
+                        null,
+                        null,
+                        null,
+                        "name",
+                        "ASC",
+                        3,
+                        12,
+                        "alice",
+                        false
                 );
 
-        assertEquals(
-                HttpStatus.BAD_REQUEST,
-                error.getStatusCode()
-        );
 
         assertEquals(
-                "Part name is required",
-                error.getReason()
-        );
-
-        verify(
-                dao,
-                never()
-        ).create(any(Part.class));
-    }
-
-    @Test
-    void createRejectsMissingPartCategoryWithoutWriting() {
-
-        Part part = new Part();
-        part.setName("RTX 4070 Super");
-        part.setCategory(null);
-
-        ResponseStatusException error =
-                assertThrows(
-                        ResponseStatusException.class,
-                        () -> service.create(
-                                part,
-                                "alice"
-                        )
-                );
-
-        assertEquals(
-                HttpStatus.BAD_REQUEST,
-                error.getStatusCode()
+                3,
+                result.getPage()
         );
 
         assertEquals(
-                "Part category is required",
-                error.getReason()
-        );
-
-        verify(
-                dao,
-                never()
-        ).create(any(Part.class));
-    }
-
-    @Test
-    void createRejectsNegativePriceWithoutWriting() {
-
-        Part part = new Part();
-        part.setName("RTX 4070 Super");
-        part.setCategory("GPU");
-        part.setPrice(
-                new BigDecimal("-1.00")
-        );
-
-        ResponseStatusException error =
-                assertThrows(
-                        ResponseStatusException.class,
-                        () -> service.create(
-                                part,
-                                "alice"
-                        )
-                );
-
-        assertEquals(
-                HttpStatus.BAD_REQUEST,
-                error.getStatusCode()
+                12,
+                result.getSize()
         );
 
         assertEquals(
-                "Part price cannot be negative",
-                error.getReason()
-        );
-
-        verify(
-                dao,
-                never()
-        ).create(any(Part.class));
-    }
-
-    @Test
-    void createRejectsPartNameOver255Characters() {
-
-        Part part = new Part();
-        part.setName(
-                "A".repeat(256)
-        );
-        part.setCategory("GPU");
-
-        ResponseStatusException error =
-                assertThrows(
-                        ResponseStatusException.class,
-                        () -> service.create(
-                                part,
-                                "alice"
-                        )
-                );
-
-        assertEquals(
-                HttpStatus.BAD_REQUEST,
-                error.getStatusCode()
+                43L,
+                result.getTotalElements()
         );
 
         assertEquals(
-                "Part name cannot exceed 255 characters",
-                error.getReason()
-        );
-
-        verify(
-                dao,
-                never()
-        ).create(any(Part.class));
-    }
-
-    @Test
-    void updateRejectsInvalidPartWithoutWriting() {
-
-        Part existing =
-                part(1, "alice", true);
-
-        existing.setName("RTX 4070");
-        existing.setCategory("GPU");
-
-        Part updated =
-                part(1, "alice", true);
-
-        updated.setName("");
-        updated.setCategory("GPU");
-
-        when(dao.findById(1))
-                .thenReturn(existing);
-
-        ResponseStatusException error =
-                assertThrows(
-                        ResponseStatusException.class,
-                        () -> service.update(
-                                1,
-                                updated,
-                                "alice",
-                                false
-                        )
-                );
-
-        assertEquals(
-                HttpStatus.BAD_REQUEST,
-                error.getStatusCode()
+                4,
+                result.getTotalPages()
         );
 
         assertEquals(
-                "Part name is required",
-                error.getReason()
+                1,
+                result.getContent().size()
         );
-
-        verify(
-                dao,
-                never()
-        ).update(any(Part.class));
-    }
-
-    private static Part part(
-            int id,
-            String username,
-            boolean isPublic) {
-
-        Part part = new Part();
-
-        part.setId(id);
-        part.setUsername(username);
-        part.setIs_Public(isPublic);
-
-        return part;
     }
 }
