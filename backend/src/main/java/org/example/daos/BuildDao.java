@@ -1,11 +1,10 @@
 package org.example.daos;   // change to your package
-
 import org.example.models.Build;
 import org.example.models.Part;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Repository;
-
+import org.example.models.PageResult;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
@@ -113,32 +112,64 @@ public class BuildDao {
     /**
      * Search builds with LIKE + safe sorting
      */
-    public List<Build> search(String search, String visibility, String sortBy, String direction) {
-        StringBuilder sql = new StringBuilder("SELECT * FROM builds WHERE 1=1");
+    public PageResult<Build> search(
+        String search, 
+        String visibility, 
+        String sortBy, 
+        String direction, 
+        int page, 
+        int size,
+        String currentUsername,
+        boolean isAdmin) {
+        StringBuilder where = new StringBuilder(" FROM builds WHERE 1=1"); 
         List<Object> params = new ArrayList<>();
 
+
+
         if (search != null && !search.isBlank()) {
-            sql.append(" AND (name LIKE ? OR description LIKE ?)");
+            where.append(" AND (name LIKE ? OR description LIKE ?)");
             String like = "%" + search + "%";
             params.add(like);
             params.add(like);
         }
 
+        //Auth First
+        if (!isAdmin) {
+            where.append(" AND (is_public = TRUE OR username = ?)");
+            params.add(currentUsername);
+        }
         if (visibility != null && !visibility.isBlank()) {
             if ("public".equalsIgnoreCase(visibility)) {
-                sql.append(" AND is_public = TRUE");
+                where.append(" AND is_public = TRUE");
             }
-            if ("private".equalsIgnoreCase(visibility)) {
-                sql.append(" AND is_public = FALSE");
+            else if ("private".equalsIgnoreCase(visibility)) {
+                where.append(" AND is_public = FALSE");
             }
         }
-
+        //Count authorized + filtered results
+        String countSql = "SELECT COUNT(*)" + where;
+        Long count = jdbcTemplate.queryForObject(
+            countSql, 
+            Long.class, 
+            params.toArray()
+        );
+        long totalElements = count == null ? 0L : count;
         Set<String> allowedSort = Set.of("name", "created_at");
-        String safeSort = allowedSort.contains(sortBy) ? sortBy : "name";
+        String safeSort = sortBy != null && allowedSort.contains(sortBy) 
+        ? sortBy 
+        : "name";
+
+        
         String safeDir = "DESC".equalsIgnoreCase(direction) ? "DESC" : "ASC";
+        long offset = (long) page * size;
 
-        sql.append(" ORDER BY ").append(safeSort).append(" ").append(safeDir);
-
-        return jdbcTemplate.query(sql.toString(), buildMapper, params.toArray());
+        String dataSql = 
+            "SELECT *" 
+            + where 
+            + " ORDER BY " 
+            + safeSort 
+            + " " 
+            + safeDir 
+            + " LIMIT ? OFFSET ?";
     }
 }
