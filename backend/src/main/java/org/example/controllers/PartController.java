@@ -1,5 +1,5 @@
 package org.example.controllers;   // change to your package
-
+import org.example.models.PageResult;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.example.models.Part;
 import org.example.services.PartService;
@@ -25,21 +25,35 @@ public class PartController {
                 .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN") || a.getAuthority().equals("ADMIN"));
     }
 
-    // GET /api/parts?search=&category=&brand=&maxPrice=&sortBy=&direction=
-    @GetMapping
-    public List<Part> search(
-            @RequestParam(required = false) String search,
-            @RequestParam(required = false) String category,
-            @RequestParam(required = false) String brand,
-            @RequestParam(required = false) BigDecimal maxPrice,
-            @RequestParam(defaultValue = "name") String sortBy,
-            @RequestParam(defaultValue = "ASC") String direction,
-            Authentication auth) {
-
+    // GET /api/parts?search=&category=&brand=&maxPrice=&sortBy=&direction=&page=&size=
+    public PageResult<Part> search(
+        @RequestParam(required = false) String search,
+        @RequestParam(required = false) String category,
+        @RequestParam(required = false) String brand,
+        @RequestParam(required = false) BigDecimal maxPrice,
+        @RequestParam(defaultValue = "name") String sortBy,
+        @RequestParam(defaultValue = "ASC") String direction,
+        @RequestParam(defaultValue = "0") int page,
+        @RequestParam(defaultValue = "12") int size,
+        Authentication auth)
+        {
         String username = auth.getName();
         boolean admin = isAdmin(auth);
-        return partService.search(search, category, brand, maxPrice, sortBy, direction, username, admin);
-    }
+
+        return partService.search(
+            search,
+            category,
+            brand,
+            maxPrice,
+            sortBy,
+            direction,
+            page,
+            size,
+            username,
+            admin
+            );
+        }
+
 
     // GET /api/parts/mine
     @GetMapping("/mine")
