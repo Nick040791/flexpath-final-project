@@ -22,7 +22,7 @@ public class Part
     //---------Getters and Setters-----------
 
     //ID
-    public int  getId()
+    public int getId()
     {
         return id;
     }
