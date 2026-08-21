@@ -113,30 +113,31 @@ public class BuildDao {
      * Search builds with LIKE + safe sorting
      */
     public PageResult<Build> search(
-        String search, 
-        String visibility, 
-        String sortBy, 
-        String direction, 
-        int page, 
+        String search,
+        String visibility,
+        String sortBy,
+        String direction,
+        int page,
         int size,
         String currentUsername,
         boolean isAdmin) {
-        StringBuilder where = new StringBuilder(" FROM builds WHERE 1=1"); 
+        StringBuilder where = new StringBuilder(" FROM builds WHERE 1=1");
         List<Object> params = new ArrayList<>();
 
 
 
-        if (search != null && !search.isBlank()) {
-            where.append(" AND (name LIKE ? OR description LIKE ?)");
-            String like = "%" + search + "%";
-            params.add(like);
-            params.add(like);
-        }
+
 
         //Auth First
         if (!isAdmin) {
             where.append(" AND (is_public = TRUE OR username = ?)");
             params.add(currentUsername);
+        }
+        if (search != null && !search.isBlank()) {
+            where.append(" AND (name LIKE ? OR description LIKE ?)");
+            String like = "%" + search + "%";
+            params.add(like);
+            params.add(like);
         }
         if (visibility != null && !visibility.isBlank()) {
             if ("public".equalsIgnoreCase(visibility)) {
@@ -150,26 +151,46 @@ public class BuildDao {
         String countSql = "SELECT COUNT(*)" + where;
         Long count = jdbcTemplate.queryForObject(
             countSql, 
-            Long.class, 
+            Long.class,
             params.toArray()
         );
         long totalElements = count == null ? 0L : count;
         Set<String> allowedSort = Set.of("name", "created_at");
-        String safeSort = sortBy != null && allowedSort.contains(sortBy) 
-        ? sortBy 
+        String safeSort = sortBy != null && allowedSort.contains(sortBy)
+        ? sortBy
         : "name";
 
         
         String safeDir = "DESC".equalsIgnoreCase(direction) ? "DESC" : "ASC";
         long offset = (long) page * size;
 
-        String dataSql = 
-            "SELECT *" 
-            + where 
-            + " ORDER BY " 
-            + safeSort 
-            + " " 
-            + safeDir 
-            + " LIMIT ? OFFSET ?";
+        String dataSql =
+            "SELECT *"
+                + where
+                + " ORDER BY "
+                + safeSort
+                + " "
+                + safeDir
+                + " LIMIT ? OFFSET ?";
+
+        List<Object> dataParams = new ArrayList<>(params);
+        dataParams.add(size);
+        dataParams.add(offset);
+
+        List<Build> content = jdbcTemplate.query(
+            dataSql,
+            buildMapper,
+            dataParams.toArray()
+        );
+
+        int totalPages = (int) Math.ceil((double) totalElements / size);
+
+        return new PageResult<>(
+            content,
+            page,
+            size,
+            totalElements,
+            totalPages
+        );
     }
 }
