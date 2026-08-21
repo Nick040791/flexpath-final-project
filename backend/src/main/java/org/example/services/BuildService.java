@@ -1,5 +1,5 @@
 package org.example.services;
-
+import org.example.models.PageResult;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.example.daos.BuildDao;
 import org.example.daos.PartDao;
@@ -64,28 +64,29 @@ public class BuildService {
         return buildDao.findByUsername(currentUsername);
     }
 
-    public List<Build> search(
-            String search,
-            String visibility,
-            String sortBy,
-            String direction,
-            String currentUsername,
-            boolean isAdmin) {
+    public PageResult<Build> search(
+        String search,
+        String visibility,
+        String sortBy,
+        String direction,
+        int page,
+        int size,
+        String currentUsername,
+        boolean isAdmin) {
 
-        List<Build> results =
-                buildDao.search(search, visibility, sortBy, direction);
+        validatePagination(page, size);
 
-        if (isAdmin) {
-            return results;
-        }
-
-        return results.stream()
-                .filter(b ->
-                        b.getIs_Public()
-                                || b.getUsername().equals(currentUsername)
-                )
-                .toList();
-    }
+        return buildDao.search(
+        search,
+        visibility,
+        sortBy,
+        direction,
+        page,
+        size,
+        currentUsername,
+        isAdmin
+        );
+}
 
     public Build update(
             int id,
@@ -282,4 +283,15 @@ public class BuildService {
             );
         }
     }
+    private void validatePagination(int page, int size){
+        if (page < 0) {
+                throw new ResponseStatusException(
+                        HttpStatus.BAD_REQUEST, "Page Cannot be negative");
+        }
+        if (size < 1 || size > 50){
+                throw new ResponseStatusException(
+                        HttpStatus.BAD_REQUEST, "Size must be between 1 and 50");
+        }
+    }
+
 }
