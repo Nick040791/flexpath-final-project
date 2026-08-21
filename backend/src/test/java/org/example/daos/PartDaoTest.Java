@@ -237,7 +237,7 @@ class PartDaoTest {
 
 
     /*
-     * This proves:
+     * This Proves:
      * - admins do not receive the normal-user ownership restriction
      * - default sorting falls back to name ASC
      * - page 0 produces offset 0
