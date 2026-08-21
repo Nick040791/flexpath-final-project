@@ -56,7 +56,7 @@ CREATE TABLE build_parts (
 -- SEED DATA
 -- --------------------------------------------------------
 
--- All passwords are 'password' (using provided bcrypt hash)
+-- All passwords are 'admin' (using provided bcrypt hash)
 INSERT INTO users (username, password) VALUES 
 ('admin', '$2a$10$tBTfzHzjmQVKza3VSa5lsOX6/iL93xPVLlLXYg2FhT6a.jb1o6VDq'),
 ('user',  '$2a$10$tBTfzHzjmQVKza3VSa5lsOX6/iL93xPVLlLXYg2FhT6a.jb1o6VDq'),
@@ -64,7 +64,6 @@ INSERT INTO users (username, password) VALUES
 
 INSERT INTO roles (username, role) VALUES 
 ('admin', 'ADMIN'),
-('admin', 'USER'),
 ('user', 'USER'),
 ('guest_builder', 'USER');
 
