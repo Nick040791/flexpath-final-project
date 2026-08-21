@@ -1,5 +1,5 @@
 package org.example.controllers;
-
+import org.example.models.PageResult;
 import org.example.models.Build;
 import org.example.models.Part;
 import org.example.services.BuildService;
@@ -24,16 +24,25 @@ public class BuildController {
                 .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN") || a.getAuthority().equals("ADMIN"));
     }
 
-    // GET /api/builds?search=&visibility=&sortBy=&direction=
-    @GetMapping
-    public List<Build> search(
+// GET /api/builds?search=&visibility=&sortBy=&direction=&page=&size=    @GetMapping
+    public PageResult<Build> search(
             @RequestParam(required = false) String search,
             @RequestParam(required = false) String visibility,
             @RequestParam(defaultValue = "name") String sortBy,
             @RequestParam(defaultValue = "ASC") String direction,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "12") int size,
             Authentication auth) {
 
-        return buildService.search(search, visibility, sortBy, direction, auth.getName(), isAdmin(auth));
+        return buildService.search(
+            search,
+            visibility,
+            sortBy,
+            direction,
+            page,
+            size,
+            auth.getName(),
+            isAdmin(auth));
     }
 
     // GET /api/builds/mine
