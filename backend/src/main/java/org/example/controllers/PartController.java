@@ -1,14 +1,23 @@
 package org.example.controllers;   // change to your package
-import org.example.models.PageResult;
+import java.math.BigDecimal;
+import java.util.List;
+
 import org.checkerframework.checker.nullness.qual.NonNull;
+import org.example.models.PageResult;
 import org.example.models.Part;
 import org.example.services.PartService;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
-import org.springframework.web.bind.annotation.*;
-
-import java.math.BigDecimal;
-import java.util.List;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.ResponseStatus;
+import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/api/parts")
@@ -26,6 +35,7 @@ public class PartController {
     }
 
     // GET /api/parts?search=&category=&brand=&maxPrice=&sortBy=&direction=&page=&size=
+    @GetMapping
     public PageResult<Part> search(
         @RequestParam(required = false) String search,
         @RequestParam(required = false) String category,

@@ -1,13 +1,22 @@
 package org.example.controllers;
-import org.example.models.PageResult;
+import java.util.List;
+
 import org.example.models.Build;
+import org.example.models.PageResult;
 import org.example.models.Part;
 import org.example.services.BuildService;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
-import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.ResponseStatus;
+import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/api/builds")
@@ -24,7 +33,8 @@ public class BuildController {
                 .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN") || a.getAuthority().equals("ADMIN"));
     }
 
-// GET /api/builds?search=&visibility=&sortBy=&direction=&page=&size=    @GetMapping
+// GET /api/builds?search=&visibility=&sortBy=&direction=&page=&size=
+    @GetMapping
     public PageResult<Build> search(
             @RequestParam(required = false) String search,
             @RequestParam(required = false) String visibility,
