@@ -6,7 +6,7 @@ import org.example.models.Part;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
-
+import org.example.models.PageResult;
 import java.math.BigDecimal;
 import java.util.List;
 
@@ -60,38 +60,33 @@ public class PartService {
         return partDao.findByUsername(currentUsername);
     }
 
-    public List<Part> search(
+    public PageResult<Part> search(
             String search,
             String category,
             String brand,
             BigDecimal maxPrice,
             String sortBy,
             String direction,
+            int page,
+            int size,
             String currentUsername,
             boolean isAdmin) {
 
-        List<Part> results = partDao.search(
+        validatePagination(page, size);
+
+        return partDao.search(
                 search,
                 category,
                 brand,
                 maxPrice,
                 sortBy,
-                direction
-        );
-
-        if (isAdmin) {
-            return results;
+                direction,
+                page,
+                size,
+                currentUsername,
+                isAdmin
+            );
         }
-
-        // non-admins only see public parts + their own private ones
-        return results.stream()
-                .filter(p ->
-                        p.getIs_Public()
-                                || p.getUsername().equals(currentUsername)
-                )
-                .toList();
-    }
-
     public Part update(
             int id,
             Part updated,
@@ -238,6 +233,16 @@ public class PartService {
                     HttpStatus.BAD_REQUEST,
                     "Part price is too large"
             );
+        }
+    }
+        private void validatePagination(int page, int size){
+        if (page < 0) {
+                throw new ResponseStatusException(
+                        HttpStatus.BAD_REQUEST, "Page Cannot be negative");
+        }
+        if (size < 1 || size > 50){
+                throw new ResponseStatusException(
+                        HttpStatus.BAD_REQUEST, "Size must be between 1 and 50");
         }
     }
 }
