@@ -1,16 +1,15 @@
 package org.example.daos;
-import org.checkerframework.checker.nullness.qual.NonNull;
-import org.example.models.Part;
-import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.jdbc.core.RowMapper;
-import org.springframework.stereotype.Repository;
-
 import java.math.BigDecimal;
-import java.sql.ResultSet;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 
+import org.checkerframework.checker.nullness.qual.NonNull;
+import org.example.models.PageResult;
+import org.example.models.Part;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.core.RowMapper;
+import org.springframework.stereotype.Repository;
 
 //Part Data Access
 @Repository
@@ -93,38 +92,99 @@ public class PartDao {
       Search with LIKE + optional filters + safe sorting.
      */
 
-    public List<Part> search(String search, String category, String brand,
-                             BigDecimal maxPrice, String sortBy, String direction) {
+    public PageResult<Part> search(
+        String search,
+        String category,
+        String brand,
+        BigDecimal maxPrice,
+        String sortBy,
+        String direction,
+        int page,
+        int size,
+        String currentUsername,
+        boolean isAdmin) {
 
-        StringBuilder sql = new StringBuilder("SELECT * FROM parts WHERE 1=1");
-        List<Object> params = new ArrayList<>();
+            //use where
+            StringBuilder where = new StringBuilder(" FROM parts WHERE 1=1");
+            List<Object> params = new ArrayList<>();
 
-        if (search != null && !search.isBlank()) {
-            sql.append(" AND (name LIKE ? OR description LIKE ?)");
-            String like = "%" + search + "%";
-            params.add(like);
-            params.add(like);
-        }
-        if (category != null && !category.isBlank()) {
-            sql.append(" AND category = ?");
-            params.add(category);
-        }
-        if (brand != null && !brand.isBlank()) {
-            sql.append(" AND brand = ?");
-            params.add(brand);
-        }
-        if (maxPrice != null) {
-            sql.append(" AND price <= ?");
-            params.add(maxPrice);
-        }
+            if (!isAdmin) { /*Auth comes first*/
+                where.append(" AND (is_public = TRUE OR username = ?)");
+                params.add(currentUsername);
+            }
+            if (search != null && !search.isBlank()) {
+                where.append(" AND (name LIKE ? OR description LIKE ?)");
+                String like = "%" + search + "%";
+                params.add(like);
+                params.add(like);
+            }
+            if (category != null && !category.isBlank()) {
+                where.append(" AND category = ?");
+                params.add(category);
+            }
+            if (brand != null && !brand.isBlank()) {
+                where.append(" AND brand = ?");
+                params.add(brand);
+            }
+            if (maxPrice != null) {
+                where.append(" AND price <= ?");
+                params.add(maxPrice);
+            }
 
-        // Safe sort the whitelist
-        Set<String> allowedSort = Set.of("name", "price", "created_at", "category", "brand");String safeSort = allowedSort.contains(sortBy) ? sortBy : "name";
-        String safeDir = "DESC".equalsIgnoreCase(direction) ? "DESC" : "ASC";
+            //Count the authorized & filtered result set
+            String countSql = "SELECT COUNT(*)" + where;
 
-        sql.append(" ORDER BY ").append(safeSort).append(" ").append(safeDir);
+            Long count = jdbcTemplate.queryForObject(
+                countSql,
+                Long.class,
+                params.toArray()
+            );
 
-        return jdbcTemplate.query(sql.toString(), mapper, params.toArray());
+            long totalElements = count == null ? 0L : count;
+
+
+            // Safe sort the whitelist
+            Set<String> allowedSort = Set.of(
+                "name",
+                "price",
+                "created_at",
+                "category",
+                "brand");
+
+            String safeSort =
+                sortBy != null && allowedSort.contains(sortBy)
+                ? sortBy
+                : "name";
+
+            String safeDir = "DESC".equalsIgnoreCase(direction) ? "DESC" : "ASC";
+            long offset = (long) page * size;
+            String dataSql =
+                "SELECT *"
+                + where
+                + " ORDER BY "
+                + safeSort
+                + " "
+                + safeDir
+                + " LIMIT ? OFFSET ?";
+            List<Object> dataParams = new ArrayList<>(params);
+            dataParams.add(size);
+            dataParams.add(offset);
+
+        List<Part> content = jdbcTemplate.query(
+            dataSql,
+            mapper,
+            dataParams.toArray()
+        );
+
+        int totalPages = (int) Math.ceil((double) totalElements / size);
+
+        return new PageResult<>(
+        content,
+        page,
+        size,
+        totalElements,
+        totalPages
+        );
     }
 }
 
