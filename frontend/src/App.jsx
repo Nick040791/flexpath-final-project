@@ -32,7 +32,7 @@ function App() {
         <Route path="*" element={<NotFound />} />
       </Routes>
       <footer className="bg-dark border-top border-warning border-4 text-center text-light py-4 mt-5">
-        <div className="container"><span className="text-warning fw-bold">PC Parts &amp; Builds</span> · Build something bright.</div>
+        <div className="container"><span className="text-warning fw-bold">Builder&#39;s Box</span> · Build something bright.</div>
       </footer>
     </div>
   );
