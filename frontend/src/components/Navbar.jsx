@@ -24,6 +24,9 @@ const Navbar = () => {
                     {isAuthenticated && (
                         <NavLink to="/parts/mine" className="nav-link">My Parts</NavLink>
                     )}
+                    {isAdmin && (
+                        <NavLink to="/admin" className="nav-link">Admin</NavLink>
+                    )}
                 </div>
                 <div className="navbar-nav ms-auto align-items-lg-center gap-2 mt-3 mt-lg-0">
                     {isAuthenticated ? (
