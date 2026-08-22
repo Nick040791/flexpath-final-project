@@ -128,6 +128,7 @@ const MyPartsPage = () => {
                         key={part.id}
                         part={part}
                         canManage
+                        canAddToBuild
                         onDelete={setPartToDelete}
                     />
                 ))}

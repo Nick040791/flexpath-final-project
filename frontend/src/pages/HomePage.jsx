@@ -195,6 +195,7 @@ const HomePage = () => {
                                     key={part.id}
                                     part={part}
                                     canManage={isAdmin || part.username === username}
+                                    canAddToBuild
                                 />
                             ))}
                         </div>
