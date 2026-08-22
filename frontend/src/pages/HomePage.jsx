@@ -124,7 +124,7 @@ const HomePage = () => {
                     <span className="badge text-bg-dark rounded-pill mb-3 px-3 py-2">
                         YOUR PC. YOUR PARTS. YOUR BUILD.
                     </span>
-                    <h1 className="display-3 fw-bold mb-3">PC Parts &amp; Builds</h1>
+                    <h1 className="display-3 fw-bold mb-3">Builder&#39;s Box</h1>
                     <p className="lead mb-4">
                         Catalog your PC parts, share them publicly, and assemble them into builds.
                     </p>
