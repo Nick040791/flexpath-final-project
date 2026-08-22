@@ -6,6 +6,7 @@ import * as partService from "../api/partService";
 import BuildForm from "../components/BuildForm";
 import VisibilityBadge from "../components/VisibilityBadge";
 import ConfirmDeleteModal from "../components/ConfirmDeleteModal";
+import Breadcrumbs from "../components/Breadcrumbs";
 import { formatPrice } from "../utils/format";
 
 const PART_PAGE_SIZE = 50;
@@ -77,18 +78,8 @@ const BuildDetailPage = () => {
      * Load every Part the current user is allowed to see
      * for the "Add a Part" picker.
      *
-     * searchParts now returns:
-     *
-     * {
-     *   content,
-     *   page,
-     *   size,
-     *   totalElements,
-     *   totalPages
-     * }
-     *
-     * The backend caps page size at 50, so retrieve
-     * additional pages when necessary.
+     * searchParts returns paginated data. The backend caps page
+     * size at 50, so retrieve additional pages when necessary.
      */
     useEffect(() => {
         if (!canManage) {
@@ -283,6 +274,14 @@ const BuildDetailPage = () => {
 
     return (
         <section className="container py-5 text-start">
+
+            <Breadcrumbs
+                items={[
+                    { label: "Home", to: "/" },
+                    { label: "Builds", to: "/builds" },
+                    { label: build.name },
+                ]}
+            />
 
             <div className="d-flex flex-column flex-sm-row gap-3 justify-content-between align-items-sm-start mb-4 bg-warning-subtle border border-warning border-2 rounded-4 p-4 shadow-sm">
 

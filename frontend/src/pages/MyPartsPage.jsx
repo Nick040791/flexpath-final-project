@@ -4,6 +4,7 @@ import * as partService from "../api/partService";
 import PartCard from "../components/PartCard";
 import PartForm from "../components/PartForm";
 import ConfirmDeleteModal from "../components/ConfirmDeleteModal";
+import Breadcrumbs from "../components/Breadcrumbs";
 
 // "My Parts" — the current user's parts with create / edit / delete.
 const MyPartsPage = () => {
@@ -73,6 +74,13 @@ const MyPartsPage = () => {
 
     return (
         <section className="container py-5 text-start">
+            <Breadcrumbs
+                items={[
+                    { label: "Home", to: "/" },
+                    { label: "My Parts" },
+                ]}
+            />
+
             <div className="d-flex flex-column flex-sm-row gap-3 justify-content-between align-items-sm-center mb-4 border-bottom border-warning border-3 pb-3">
                 <h1 className="h3 mb-0">My Parts</h1>
                 <button

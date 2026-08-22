@@ -5,6 +5,7 @@ import * as partService from "../api/partService";
 import PartForm from "../components/PartForm";
 import VisibilityBadge from "../components/VisibilityBadge";
 import ConfirmDeleteModal from "../components/ConfirmDeleteModal";
+import Breadcrumbs from "../components/Breadcrumbs";
 import { formatDate, formatPrice } from "../utils/format";
 
 // Single part view. Edit/delete controls appear for the owner or an admin.
@@ -82,6 +83,13 @@ const PartDetailPage = () => {
 
     return (
         <section className="container py-5 text-start">
+            <Breadcrumbs
+                items={[
+                    { label: "Home", to: "/" },
+                    { label: part.name },
+                ]}
+            />
+
             <div className="d-flex flex-column flex-sm-row gap-3 justify-content-between align-items-sm-start mb-4 bg-warning-subtle border border-warning border-2 rounded-4 p-4 shadow-sm">
                 <div>
                     <h1 className="h3 mb-1">{part.name}</h1>

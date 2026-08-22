@@ -6,7 +6,17 @@ import BuildCard from "../components/BuildCard";
 import BuildForm from "../components/BuildForm";
 import ConfirmDeleteModal from "../components/ConfirmDeleteModal";
 import Pagination from "../components/Pagination";
-import { BUILD_SORT_OPTIONS } from "../utils/constants";
+import Breadcrumbs from "../components/Breadcrumbs";
+import {
+    BUILD_CONTENT_OPTIONS,
+    BUILD_SORT_OPTIONS,
+    PART_CATEGORIES,
+} from "../utils/constants";
+import {
+    clearBuildPreferences,
+    readBuildPreferences,
+    writeBuildPreferences,
+} from "../utils/searchPreferences";
 
 const PAGE_SIZE = 12;
 
@@ -17,9 +27,33 @@ const BUILD_FILTERS = [
         type: "select",
         options: ["Public", "Private"],
     },
+    {
+        name: "owner",
+        label: "Creator",
+        type: "text",
+        placeholder: "Username",
+    },
+    {
+        name: "partCategory",
+        label: "Part Category",
+        type: "select",
+        options: PART_CATEGORIES,
+    },
+    {
+        name: "partSearch",
+        label: "Contains Part",
+        type: "text",
+        placeholder: "Name, brand, or model",
+    },
+    {
+        name: "hasParts",
+        label: "Contents",
+        type: "select",
+        options: BUILD_CONTENT_OPTIONS,
+    },
 ];
 
-// Builds list — own + public builds, with search, visibility, sort, and pagination.
+// Builds list — own + public builds, with search, filters, sort, persistence, and pagination.
 const BuildsPage = () => {
     const {
         isAuthenticated,
@@ -38,7 +72,7 @@ const BuildsPage = () => {
     const [buildToDelete, setBuildToDelete] = useState(null);
 
     // Stores the active search/filter/sort values.
-    // Page navigation will reuse these values.
+    // Page navigation reuses this exact query.
     const [currentQuery, setCurrentQuery] = useState({});
 
     // Pagination metadata returned by the backend.
@@ -56,6 +90,10 @@ const BuildsPage = () => {
      * query contains the active:
      * search
      * visibility
+     * owner
+     * partCategory
+     * partSearch
+     * hasParts
      * sortBy
      * direction
      *
@@ -78,13 +116,7 @@ const BuildsPage = () => {
             /*
              * If a delete removed the last item from the
              * current page, the current page can become invalid.
-             *
-             * Example:
-             * page=2
-             * totalPages becomes 2
-             *
-             * Valid backend pages are now 0 and 1,
-             * so reload the new last page.
+             * Reload the new last page when that happens.
              */
             if (
                 data.totalPages > 0 &&
@@ -145,22 +177,32 @@ const BuildsPage = () => {
 
 
     /*
-     * Initial load always starts on backend page 0.
+     * Restore this authenticated user's saved Build query.
+     * Page and size are intentionally not persisted, so every
+     * restored result set starts on backend page 0.
      */
     useEffect(() => {
-        if (isAuthenticated) {
-            loadBuilds({}, 0);
+        if (authLoading || !isAuthenticated || !username) {
+            return;
         }
-    }, [isAuthenticated, loadBuilds]);
+
+        const restoredQuery = readBuildPreferences(username);
+
+        setCurrentQuery(restoredQuery);
+        loadBuilds(restoredQuery, 0);
+    }, [authLoading, isAuthenticated, username, loadBuilds]);
 
 
     /*
      * A new search/filter/sort creates a new result set.
-     *
-     * Therefore pagination resets to page 0.
+     * Persist the submitted query and reset pagination to page 0.
      */
     async function handleSearch(params = {}) {
         setCurrentQuery(params);
+
+        if (username) {
+            writeBuildPreferences(username, params);
+        }
 
         await loadBuilds(
             params,
@@ -170,8 +212,23 @@ const BuildsPage = () => {
 
 
     /*
+     * Reset is the escape hatch for persistent filters.
+     * SearchBar resets its controls; this clears persisted state
+     * and reloads the backend defaults on page 0.
+     */
+    async function handleReset() {
+        if (username) {
+            clearBuildPreferences(username);
+        }
+
+        setCurrentQuery({});
+
+        await loadBuilds({}, 0);
+    }
+
+
+    /*
      * Page navigation changes only the page.
-     *
      * The active search/filter/sort values are preserved.
      */
     async function handlePageChange(nextPage) {
@@ -217,12 +274,6 @@ const BuildsPage = () => {
 
             setBuildToDelete(null);
 
-            /*
-             * Reload the current page.
-             *
-             * loadBuilds also handles the case where
-             * deleting the final item makes this page invalid.
-             */
             await loadBuilds(
                 currentQuery,
                 pagination.page
@@ -251,6 +302,13 @@ const BuildsPage = () => {
 
     return (
         <section className="container py-5 text-start">
+
+            <Breadcrumbs
+                items={[
+                    { label: "Home", to: "/" },
+                    { label: "Builds" },
+                ]}
+            />
 
             <div className="d-flex flex-column flex-sm-row gap-3 justify-content-between align-items-sm-center mb-4 border-bottom border-warning border-3 pb-3">
 
@@ -305,7 +363,9 @@ const BuildsPage = () => {
             <SearchBar
                 filters={BUILD_FILTERS}
                 sortOptions={BUILD_SORT_OPTIONS}
+                initialValues={currentQuery}
                 onSearch={handleSearch}
+                onReset={handleReset}
                 loading={status === "loading"}
             />
 

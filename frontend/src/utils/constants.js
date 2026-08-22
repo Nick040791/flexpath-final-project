@@ -24,6 +24,11 @@ export const BUILD_SORT_OPTIONS = [
     { value: "created_at", label: "Date Created" },
 ];
 
+export const BUILD_CONTENT_OPTIONS = [
+    { value: "true", label: "With parts" },
+    { value: "false", label: "Empty" },
+];
+
 export const DIRECTION_OPTIONS = [
     { value: "ASC", label: "Ascending" },
     { value: "DESC", label: "Descending" },

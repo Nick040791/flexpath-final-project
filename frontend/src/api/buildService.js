@@ -16,7 +16,8 @@ function toQuery(params) {
 
 // GET /api/builds
 // params:
-// search, visibility, sortBy, direction, page, size
+// search, visibility, owner, partCategory, partSearch, hasParts,
+// sortBy, direction, page, size
 //
 // returns:
 // {

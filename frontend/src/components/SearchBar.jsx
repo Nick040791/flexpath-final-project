@@ -1,30 +1,83 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import PropTypes from "prop-types";
 import { DIRECTION_OPTIONS } from "../utils/constants";
+
+const EMPTY_FILTERS = [];
+const EMPTY_INITIAL_VALUES = {};
+
+function makeDefaultValues(filters, sortOptions) {
+    const initial = {
+        search: "",
+        sortBy: sortOptions[0].value,
+        direction: "ASC",
+    };
+
+    filters.forEach((filter) => {
+        initial[filter.name] = "";
+    });
+
+    return initial;
+}
+
+function optionValue(option) {
+    return typeof option === "string" ? option : option.value;
+}
+
+function optionLabel(option) {
+    return typeof option === "string" ? option : option.label;
+}
 
 /*
     Reusable search bar for Parts and Builds.
     - keyword: LIKE search on the backend ("search" param)
-    - filters: extra query params, e.g. [{ name: "category", label: "Category", type: "select", options: [...] }]
+    - filters: extra query params
     - sortOptions: [{ value, label }] — must be whitelisted on the backend
+    - initialValues: optional restored values, such as browser-persisted Build filters
     Calls onSearch({ search, ...filters, sortBy, direction }) on submit.
 */
-function SearchBar({ filters = [], sortOptions, onSearch, loading = false }) {
-    const [values, setValues] = useState(() => {
-        const initial = { search: "", sortBy: sortOptions[0].value, direction: "ASC" };
-        filters.forEach((filter) => {
-            initial[filter.name] = "";
+function SearchBar({
+    filters,
+    sortOptions,
+    onSearch,
+    onReset,
+    initialValues,
+    loading = false,
+}) {
+    const safeFilters = filters || EMPTY_FILTERS;
+    const safeInitialValues = initialValues || EMPTY_INITIAL_VALUES;
+
+    const defaults = useMemo(
+        () => makeDefaultValues(safeFilters, sortOptions),
+        [safeFilters, sortOptions]
+    );
+
+    const [values, setValues] = useState(() => ({
+        ...makeDefaultValues(safeFilters, sortOptions),
+        ...safeInitialValues,
+    }));
+
+    useEffect(() => {
+        setValues({
+            ...defaults,
+            ...safeInitialValues,
         });
-        return initial;
-    });
+    }, [defaults, safeInitialValues]);
 
     function handleChange(event) {
-        setValues((prev) => ({ ...prev, [event.target.name]: event.target.value }));
+        setValues((prev) => ({
+            ...prev,
+            [event.target.name]: event.target.value,
+        }));
     }
 
     function handleSubmit(event) {
         event.preventDefault();
         onSearch(values);
+    }
+
+    function handleReset() {
+        setValues(defaults);
+        onReset?.();
     }
 
     return (
@@ -43,7 +96,7 @@ function SearchBar({ filters = [], sortOptions, onSearch, loading = false }) {
                     />
                 </div>
 
-                {filters.map((filter) => (
+                {safeFilters.map((filter) => (
                     <div className="col-md-2" key={filter.name}>
                         <label className="form-label" htmlFor={filter.name}>{filter.label}</label>
                         {filter.type === "select" ? (
@@ -55,9 +108,14 @@ function SearchBar({ filters = [], sortOptions, onSearch, loading = false }) {
                                 onChange={handleChange}
                             >
                                 <option value="">All</option>
-                                {filter.options.map((option) => (
-                                    <option value={option} key={option}>{option}</option>
-                                ))}
+                                {(filter.options || []).map((option) => {
+                                    const value = optionValue(option);
+                                    return (
+                                        <option value={value} key={value}>
+                                            {optionLabel(option)}
+                                        </option>
+                                    );
+                                })}
                             </select>
                         ) : (
                             <input
@@ -104,22 +162,47 @@ function SearchBar({ filters = [], sortOptions, onSearch, loading = false }) {
                     </select>
                 </div>
 
-                <div className="col-md-12 col-lg-2">
-                    <button className="btn btn-warning w-100 fw-bold shadow-sm" type="submit" disabled={loading}>
-                        {loading ? "Searching..." : "Search"}
-                    </button>
+                <div className={onReset ? "col-md-12 col-lg-4" : "col-md-12 col-lg-2"}>
+                    <div className="d-flex gap-2">
+                        <button
+                            className={`btn btn-warning fw-bold shadow-sm ${onReset ? "flex-fill" : "w-100"}`}
+                            type="submit"
+                            disabled={loading}
+                        >
+                            {loading ? "Searching..." : "Search"}
+                        </button>
+
+                        {onReset && (
+                            <button
+                                className="btn btn-outline-secondary flex-fill"
+                                type="button"
+                                onClick={handleReset}
+                                disabled={loading}
+                            >
+                                Reset
+                            </button>
+                        )}
+                    </div>
                 </div>
             </form>
         </div>
     );
 }
 
+const filterOptionType = PropTypes.oneOfType([
+    PropTypes.string,
+    PropTypes.shape({
+        value: PropTypes.string.isRequired,
+        label: PropTypes.string.isRequired,
+    }),
+]);
+
 SearchBar.propTypes = {
     filters: PropTypes.arrayOf(PropTypes.shape({
         name: PropTypes.string.isRequired,
         label: PropTypes.string.isRequired,
         type: PropTypes.string,
-        options: PropTypes.arrayOf(PropTypes.string),
+        options: PropTypes.arrayOf(filterOptionType),
         placeholder: PropTypes.string,
     })),
     sortOptions: PropTypes.arrayOf(PropTypes.shape({
@@ -127,6 +210,12 @@ SearchBar.propTypes = {
         label: PropTypes.string.isRequired,
     })).isRequired,
     onSearch: PropTypes.func.isRequired,
+    onReset: PropTypes.func,
+    initialValues: PropTypes.objectOf(PropTypes.oneOfType([
+        PropTypes.string,
+        PropTypes.number,
+        PropTypes.bool,
+    ])),
     loading: PropTypes.bool,
 };
 
