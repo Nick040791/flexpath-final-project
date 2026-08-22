@@ -31,8 +31,11 @@ describe("PartCard", () => {
         const subtitle = renderer.root.findByType("h3");
         const badge = renderer.root.findByType(VisibilityBadge);
         const price = renderer.root.find(
-            (node) => node.type === "span" && node.props.className.includes("text-bg-warning")
+            (node) =>
+                node.type === "span" &&
+                node.props.className.includes("text-bg-warning")
         );
+
         expect(link.props.href).toBe("/parts/7");
         expect(link.children).toEqual(["RTX 4070 Super"]);
         expect(subtitle.children).toEqual(["GPU · NVIDIA · 4070 Super"]);
@@ -40,17 +43,38 @@ describe("PartCard", () => {
         expect(badge.props.isPublic).toBe(false);
     });
 
-    test("does not render Delete when management is unavailable", () => {
-        const renderer = renderCard({ canManage: false, onDelete: jest.fn() });
+    test("does not render action buttons when actions are unavailable", () => {
+        const renderer = renderCard({
+            canManage: false,
+            canAddToBuild: false,
+            onDelete: jest.fn(),
+        });
+
         expect(renderer.root.findAllByType("button")).toHaveLength(0);
     });
 
     test("renders Delete for managers and passes the part to onDelete", () => {
         const onDelete = jest.fn();
-        const renderer = renderCard({ canManage: true, onDelete });
+        const renderer = renderCard({
+            canManage: true,
+            canAddToBuild: false,
+            onDelete,
+        });
+
         const button = renderer.root.findByType("button");
         expect(button.children).toEqual(["Delete"]);
+
         act(() => button.props.onClick());
+
         expect(onDelete).toHaveBeenCalledWith(part);
+    });
+
+    test("renders Add to Build for authenticated card contexts", () => {
+        const renderer = renderCard({
+            canAddToBuild: true,
+        });
+
+        const button = renderer.root.findByType("button");
+        expect(button.children).toEqual(["Add to Build"]);
     });
 });
