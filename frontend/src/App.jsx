@@ -7,6 +7,8 @@ import MyPartsPage from './pages/MyPartsPage';
 import PartDetailPage from './pages/PartDetailPage';
 import BuildsPage from './pages/BuildsPage';
 import BuildDetailPage from './pages/BuildDetailPage';
+import AdminPage from './pages/AdminPage';
+import AdminRoute from './components/AdminRoute';
 
 function App() {
   return (
@@ -19,6 +21,14 @@ function App() {
         <Route path="/parts/:id" element={<PartDetailPage />} />
         <Route path="/builds" element={<BuildsPage />} />
         <Route path="/builds/:id" element={<BuildDetailPage />} />
+        <Route
+          path="/admin"
+          element={
+            <AdminRoute>
+              <AdminPage />
+            </AdminRoute>
+          }
+        />
         <Route path="*" element={<NotFound />} />
       </Routes>
       <footer className="bg-dark border-top border-warning border-4 text-center text-light py-4 mt-5">
