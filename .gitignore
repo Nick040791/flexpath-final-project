@@ -30,4 +30,4 @@ backend/target
 /frontend/coverage
 
 .fake
-.github/modernize/java-upgrade/hooks/scripts/recordToolUse.ps1
+
