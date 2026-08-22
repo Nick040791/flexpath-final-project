@@ -5,8 +5,12 @@ import org.example.models.PageResult;
 import org.example.models.Part;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
+import org.springframework.jdbc.support.GeneratedKeyHolder;
+import org.springframework.jdbc.support.KeyHolder;
 import org.springframework.stereotype.Repository;
 
+import java.sql.PreparedStatement;
+import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
@@ -65,11 +69,25 @@ public class BuildDao {
             INSERT INTO builds (name, description, is_public, username)
             VALUES (?, ?, ?, ?)
             """;
-        jdbcTemplate.update(sql,
-                build.getName(),
-                build.getDescription(),
-                build.getIs_Public(),
-                build.getUsername());
+
+        KeyHolder keyHolder = new GeneratedKeyHolder();
+
+        jdbcTemplate.update(connection -> {
+            PreparedStatement statement = connection.prepareStatement(
+                    sql,
+                    Statement.RETURN_GENERATED_KEYS
+            );
+            statement.setString(1, build.getName());
+            statement.setString(2, build.getDescription());
+            statement.setBoolean(3, build.getIs_Public());
+            statement.setString(4, build.getUsername());
+            return statement;
+        }, keyHolder);
+
+        Number generatedId = keyHolder.getKey();
+        if (generatedId != null) {
+            build.setId(generatedId.intValue());
+        }
     }
 
     public void update(Build build) {
@@ -92,8 +110,12 @@ public class BuildDao {
     // ----- join table methods -----
 
     public void addPartToBuild(int buildId, int partId, int quantity) {
-        String sql = "INSERT INTO build_parts (build_id, part_id, quantity) VALUES (?, ?, ?)";
-        jdbcTemplate.update(sql, buildId, partId, quantity);
+        String sql = """
+            INSERT INTO build_parts (build_id, part_id, quantity)
+            VALUES (?, ?, ?)
+            ON DUPLICATE KEY UPDATE quantity = quantity + ?
+            """;
+        jdbcTemplate.update(sql, buildId, partId, quantity, quantity);
     }
 
     public void removePartFromBuild(int buildId, int partId) {
