@@ -1,4 +1,5 @@
 package org.example.controllers;
+
 import java.util.List;
 
 import org.example.models.Build;
@@ -33,26 +34,55 @@ public class BuildController {
                 .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN") || a.getAuthority().equals("ADMIN"));
     }
 
-// GET /api/builds?search=&visibility=&sortBy=&direction=&page=&size=
+    // GET /api/builds?search=&visibility=&owner=&partCategory=&partSearch=&hasParts=&sortBy=&direction=&page=&size=
     @GetMapping
     public PageResult<Build> search(
             @RequestParam(required = false) String search,
             @RequestParam(required = false) String visibility,
+            @RequestParam(required = false) String owner,
+            @RequestParam(required = false) String partCategory,
+            @RequestParam(required = false) String partSearch,
+            @RequestParam(required = false) Boolean hasParts,
             @RequestParam(defaultValue = "name") String sortBy,
             @RequestParam(defaultValue = "ASC") String direction,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "12") int size,
             Authentication auth) {
 
+        /*
+         * Preserve the original service call for requests that do not use
+         * the new filters. The overload delegates to the expanded search in
+         * production and keeps existing callers/tests source-compatible.
+         */
+        if (owner == null
+                && partCategory == null
+                && partSearch == null
+                && hasParts == null) {
+
+            return buildService.search(
+                    search,
+                    visibility,
+                    sortBy,
+                    direction,
+                    page,
+                    size,
+                    auth.getName(),
+                    isAdmin(auth));
+        }
+
         return buildService.search(
-            search,
-            visibility,
-            sortBy,
-            direction,
-            page,
-            size,
-            auth.getName(),
-            isAdmin(auth));
+                search,
+                visibility,
+                owner,
+                partCategory,
+                partSearch,
+                hasParts,
+                sortBy,
+                direction,
+                page,
+                size,
+                auth.getName(),
+                isAdmin(auth));
     }
 
     // GET /api/builds/mine
@@ -87,7 +117,7 @@ public class BuildController {
         buildService.delete(id, auth.getName(), isAdmin(auth));
     }
 
-    //join-table endpoints
+    // join-table endpoints
 
     // POST /api/builds/{buildId}/parts/{partId}?quantity=1
     @PostMapping("/{buildId}/parts/{partId}")

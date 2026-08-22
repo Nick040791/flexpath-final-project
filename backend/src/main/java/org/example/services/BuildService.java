@@ -1,9 +1,10 @@
 package org.example.services;
-import org.example.models.PageResult;
+
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.example.daos.BuildDao;
 import org.example.daos.PartDao;
 import org.example.models.Build;
+import org.example.models.PageResult;
 import org.example.models.Part;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -64,29 +65,62 @@ public class BuildService {
         return buildDao.findByUsername(currentUsername);
     }
 
+    // Original search contract retained for existing callers/tests.
     public PageResult<Build> search(
-        String search,
-        String visibility,
-        String sortBy,
-        String direction,
-        int page,
-        int size,
-        String currentUsername,
-        boolean isAdmin) {
+            String search,
+            String visibility,
+            String sortBy,
+            String direction,
+            int page,
+            int size,
+            String currentUsername,
+            boolean isAdmin) {
 
         validatePagination(page, size);
 
         return buildDao.search(
-        search,
-        visibility,
-        sortBy,
-        direction,
-        page,
-        size,
-        currentUsername,
-        isAdmin
+                search,
+                visibility,
+                sortBy,
+                direction,
+                page,
+                size,
+                currentUsername,
+                isAdmin
         );
-}
+    }
+
+    public PageResult<Build> search(
+            String search,
+            String visibility,
+            String owner,
+            String partCategory,
+            String partSearch,
+            Boolean hasParts,
+            String sortBy,
+            String direction,
+            int page,
+            int size,
+            String currentUsername,
+            boolean isAdmin) {
+
+        validatePagination(page, size);
+
+        return buildDao.search(
+                search,
+                visibility,
+                owner,
+                partCategory,
+                partSearch,
+                hasParts,
+                sortBy,
+                direction,
+                page,
+                size,
+                currentUsername,
+                isAdmin
+        );
+    }
 
     public Build update(
             int id,
@@ -283,15 +317,20 @@ public class BuildService {
             );
         }
     }
-    private void validatePagination(int page, int size){
+
+    private void validatePagination(int page, int size) {
         if (page < 0) {
-                throw new ResponseStatusException(
-                        HttpStatus.BAD_REQUEST, "Page Cannot be negative");
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Page Cannot be negative"
+            );
         }
-        if (size < 1 || size > 50){
-                throw new ResponseStatusException(
-                        HttpStatus.BAD_REQUEST, "Size must be between 1 and 50");
+
+        if (size < 1 || size > 50) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Size must be between 1 and 50"
+            );
         }
     }
-
 }

@@ -1,10 +1,12 @@
-package org.example.daos;   // change to your package
+package org.example.daos;
+
 import org.example.models.Build;
+import org.example.models.PageResult;
 import org.example.models.Part;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Repository;
-import org.example.models.PageResult;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
@@ -29,7 +31,6 @@ public class BuildDao {
         return build;
     };
 
-    // Re-use a Part mapper if you already have one, or define a simple one here
     private final RowMapper<Part> partMapper = (rs, rowNum) -> {
         Part part = new Part();
         part.setId(rs.getInt("id"));
@@ -109,88 +110,163 @@ public class BuildDao {
         return jdbcTemplate.query(sql, partMapper, buildId);
     }
 
+    // Original search contract retained for existing callers/tests.
+    public PageResult<Build> search(
+            String search,
+            String visibility,
+            String sortBy,
+            String direction,
+            int page,
+            int size,
+            String currentUsername,
+            boolean isAdmin) {
+
+        return search(
+                search,
+                visibility,
+                null,
+                null,
+                null,
+                null,
+                sortBy,
+                direction,
+                page,
+                size,
+                currentUsername,
+                isAdmin
+        );
+    }
+
     /**
-     * Search builds with LIKE + safe sorting
+     * Search builds with authorization, optional filters, safe sorting,
+     * and backend pagination. Related-part filters use correlated EXISTS
+     * predicates so COUNT(*) still counts Builds rather than joined rows.
      */
     public PageResult<Build> search(
-        String search,
-        String visibility,
-        String sortBy,
-        String direction,
-        int page,
-        int size,
-        String currentUsername,
-        boolean isAdmin) {
+            String search,
+            String visibility,
+            String owner,
+            String partCategory,
+            String partSearch,
+            Boolean hasParts,
+            String sortBy,
+            String direction,
+            int page,
+            int size,
+            String currentUsername,
+            boolean isAdmin) {
+
         StringBuilder where = new StringBuilder(" FROM builds WHERE 1=1");
         List<Object> params = new ArrayList<>();
 
-
-
-
-
-        //Auth First
+        // Authorization first. Every optional filter only narrows this set.
         if (!isAdmin) {
             where.append(" AND (is_public = TRUE OR username = ?)");
             params.add(currentUsername);
         }
+
         if (search != null && !search.isBlank()) {
             where.append(" AND (name LIKE ? OR description LIKE ?)");
             String like = "%" + search + "%";
             params.add(like);
             params.add(like);
         }
+
         if (visibility != null && !visibility.isBlank()) {
             if ("public".equalsIgnoreCase(visibility)) {
                 where.append(" AND is_public = TRUE");
-            }
-            else if ("private".equalsIgnoreCase(visibility)) {
+            } else if ("private".equalsIgnoreCase(visibility)) {
                 where.append(" AND is_public = FALSE");
             }
         }
-        //Count authorized + filtered results
+
+        if (owner != null && !owner.isBlank()) {
+            where.append(" AND username = ?");
+            params.add(owner);
+        }
+
+        if (partCategory != null && !partCategory.isBlank()) {
+            where.append("""
+                 AND EXISTS (
+                    SELECT 1
+                    FROM build_parts bp
+                    JOIN parts p ON p.id = bp.part_id
+                    WHERE bp.build_id = builds.id
+                      AND p.category = ?
+                 )
+                """);
+            params.add(partCategory);
+        }
+
+        if (partSearch != null && !partSearch.isBlank()) {
+            where.append("""
+                 AND EXISTS (
+                    SELECT 1
+                    FROM build_parts bp
+                    JOIN parts p ON p.id = bp.part_id
+                    WHERE bp.build_id = builds.id
+                      AND (p.name LIKE ? OR p.brand LIKE ? OR p.model LIKE ?)
+                 )
+                """);
+
+            String like = "%" + partSearch + "%";
+            params.add(like);
+            params.add(like);
+            params.add(like);
+        }
+
+        if (hasParts != null) {
+            if (hasParts) {
+                where.append(" AND EXISTS (SELECT 1 FROM build_parts bp WHERE bp.build_id = builds.id)");
+            } else {
+                where.append(" AND NOT EXISTS (SELECT 1 FROM build_parts bp WHERE bp.build_id = builds.id)");
+            }
+        }
+
+        // Count the exact same authorized + filtered result set used by SELECT.
         String countSql = "SELECT COUNT(*)" + where;
         Long count = jdbcTemplate.queryForObject(
-            countSql, 
-            Long.class,
-            params.toArray()
+                countSql,
+                Long.class,
+                params.toArray()
         );
         long totalElements = count == null ? 0L : count;
+
         Set<String> allowedSort = Set.of("name", "created_at");
         String safeSort = sortBy != null && allowedSort.contains(sortBy)
-        ? sortBy
-        : "name";
+                ? sortBy
+                : "name";
 
-        
         String safeDir = "DESC".equalsIgnoreCase(direction) ? "DESC" : "ASC";
         long offset = (long) page * size;
 
         String dataSql =
-            "SELECT *"
-                + where
-                + " ORDER BY "
-                + safeSort
-                + " "
-                + safeDir
-                + " LIMIT ? OFFSET ?";
+                "SELECT *"
+                        + where
+                        + " ORDER BY "
+                        + safeSort
+                        + " "
+                        + safeDir
+                        + " LIMIT ? OFFSET ?";
 
         List<Object> dataParams = new ArrayList<>(params);
         dataParams.add(size);
         dataParams.add(offset);
 
         List<Build> content = jdbcTemplate.query(
-            dataSql,
-            buildMapper,
-            dataParams.toArray()
+                dataSql,
+                buildMapper,
+                dataParams.toArray()
         );
 
         int totalPages = (int) Math.ceil((double) totalElements / size);
 
         return new PageResult<>(
-            content,
-            page,
-            size,
-            totalElements,
-            totalPages
+                content,
+                page,
+                size,
+                totalElements,
+                totalPages
         );
     }
 }
