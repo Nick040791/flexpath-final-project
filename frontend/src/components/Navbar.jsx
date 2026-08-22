@@ -13,7 +13,7 @@ const Navbar = () => {
     return (
         <nav className="navbar navbar-expand-lg navbar-dark bg-dark sticky-top border-bottom border-warning border-4 shadow">
             <div className="container py-2">
-                <NavLink to="/" className="navbar-brand fw-bold text-warning fs-4">PC Parts &amp; Builds</NavLink>
+                <NavLink to="/" className="navbar-brand fw-bold text-warning fs-4">Builder&#39;s Box</NavLink>
                 <button className="navbar-toggler border-warning" type="button" data-bs-toggle="collapse" data-bs-target="#mainNavigation" aria-controls="mainNavigation" aria-expanded="false" aria-label="Toggle navigation">
                     <span className="navbar-toggler-icon"></span>
                 </button>
