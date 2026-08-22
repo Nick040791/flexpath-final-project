@@ -30,6 +30,7 @@ CREATE TABLE parts (
     is_public BOOLEAN NOT NULL DEFAULT TRUE,
     username VARCHAR(255) NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_parts_username (username),
     FOREIGN KEY (username) REFERENCES users(username) ON DELETE CASCADE
 );
 
@@ -40,6 +41,7 @@ CREATE TABLE builds (
     is_public BOOLEAN NOT NULL DEFAULT TRUE,
     username VARCHAR(255) NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_builds_username (username),
     FOREIGN KEY (username) REFERENCES users(username) ON DELETE CASCADE
 );
 
