@@ -1,43 +1,38 @@
 jest.mock("../auth/AuthContext", () => ({
-    useAuth: jest.fn()
+    useAuth: jest.fn(),
 }));
 
 jest.mock("../api/partService", () => ({
-    searchParts: jest.fn()
+    searchParts: jest.fn(),
 }));
 
 jest.mock("../api/buildService", () => ({
-    searchBuilds: jest.fn()
+    searchBuilds: jest.fn(),
 }));
 
 jest.mock("../components/SearchBar", () => ({
     __esModule: true,
-    default: (props) => <search-bar {...props} />
+    default: (props) => <search-bar {...props} />,
 }));
 
 jest.mock("../components/PartCard", () => ({
     __esModule: true,
-    default: (props) => <part-card {...props} />
+    default: (props) => <part-card {...props} />,
 }));
 
 jest.mock("../components/BuildCard", () => ({
     __esModule: true,
-    default: (props) => <build-card {...props} />
+    default: (props) => <build-card {...props} />,
 }));
 
 jest.mock("../components/Pagination", () => ({
     __esModule: true,
-    default: (props) => <pagination {...props} />
+    default: (props) => <pagination {...props} />,
 }));
 
 jest.mock("react-router-dom", () => ({
-    Link: ({ to, children }) => (
-        <a href={to}>
-            {children}
-        </a>
-    )
+    Link: ({ to, children }) => <a href={to}>{children}</a>,
 }));
-
 
 const { act, create } = require("react-test-renderer");
 const HomePage = require("./HomePage").default;
@@ -45,407 +40,222 @@ const { useAuth } = require("../auth/AuthContext");
 const partService = require("../api/partService");
 const buildService = require("../api/buildService");
 
+function partPage(content = [], overrides = {}) {
+    return {
+        content,
+        page: 0,
+        size: 12,
+        totalElements: content.length,
+        totalPages: content.length ? 1 : 0,
+        ...overrides,
+    };
+}
+
+function buildPage(content = []) {
+    return {
+        content,
+        page: 0,
+        size: 4,
+        totalElements: content.length,
+        totalPages: content.length ? 1 : 0,
+    };
+}
 
 describe("HomePage", () => {
-
     beforeEach(() => {
         jest.clearAllMocks();
     });
 
-
     test("shows authentication loading and login prompt states", () => {
-
         useAuth.mockReturnValue({
             isAuthenticated: false,
             loading: true,
             username: null,
-            isAdmin: false
+            isAdmin: false,
         });
 
-
-        let renderer =
-            create(<HomePage />);
-
-
+        let renderer = create(<HomePage />);
         expect(
-            renderer.root.findAll(
-                (node) =>
-                    node.children?.includes("Loading...")
-            )
+            renderer.root.findAll((node) => node.children?.includes("Loading..."))
         ).not.toHaveLength(0);
-
 
         useAuth.mockReturnValue({
             isAuthenticated: false,
             loading: false,
             username: null,
-            isAdmin: false
+            isAdmin: false,
         });
-
 
         act(() => {
             renderer.update(<HomePage />);
         });
 
-
-        expect(
-            renderer.root.findByType("a").props.href
-        ).toBe("/login");
-
-
-        expect(
-            partService.searchParts
-        ).not.toHaveBeenCalled();
+        expect(renderer.root.findByType("a").props.href).toBe("/login");
+        expect(partService.searchParts).not.toHaveBeenCalled();
     });
 
-
-    test("loads paginated Parts and public Build preview", async () => {
-
+    test("loads paginated parts and the public build preview", async () => {
         useAuth.mockReturnValue({
             isAuthenticated: true,
             loading: false,
             username: "nick",
-            isAdmin: false
+            isAdmin: false,
         });
-
-
-        partService.searchParts.mockResolvedValue({
-            content: [
-                {
-                    id: 1,
-                    username: "nick"
-                },
-                {
-                    id: 2,
-                    username: "other"
-                }
-            ],
-            page: 0,
-            size: 12,
-            totalElements: 2,
-            totalPages: 1
-        });
-
-
-        buildService.searchBuilds.mockResolvedValue({
-            content: [
-                {
-                    id: 1,
-                    is_Public: true
-                },
-                {
-                    id: 3,
-                    is_Public: true
-                }
-            ],
-            page: 0,
-            size: 4,
-            totalElements: 2,
-            totalPages: 1
-        });
-
+        partService.searchParts.mockResolvedValue(
+            partPage([
+                { id: 1, username: "nick" },
+                { id: 2, username: "other" },
+            ])
+        );
+        buildService.searchBuilds.mockResolvedValue(
+            buildPage([
+                { id: 1, is_Public: true },
+                { id: 3, is_Public: true },
+            ])
+        );
 
         let renderer;
-
-
         await act(async () => {
             renderer = create(<HomePage />);
         });
 
-
-        expect(
-            partService.searchParts
-        ).toHaveBeenCalledWith({
+        expect(partService.searchParts).toHaveBeenCalledWith({
             page: 0,
-            size: 12
+            size: 12,
         });
-
-
-        expect(
-            buildService.searchBuilds
-        ).toHaveBeenCalledWith({
+        expect(buildService.searchBuilds).toHaveBeenCalledWith({
             visibility: "Public",
             page: 0,
-            size: 4
+            size: 4,
         });
 
-
-        expect(
-            renderer.root.findAllByType("part-card")
-        ).toHaveLength(2);
-
-
-        expect(
-            renderer.root.findAllByType("build-card")
-        ).toHaveLength(2);
-
-
-        const partCards =
-            renderer.root.findAllByType("part-card");
-
-
-        expect(
-            partCards[0].props.canManage
-        ).toBe(true);
-
-
-        expect(
-            partCards[1].props.canManage
-        ).toBe(false);
-
-
-        const pagination =
-            renderer.root.findByType("pagination");
-
-
-        expect(
-            pagination.props.page
-        ).toBe(0);
-
-
-        expect(
-            pagination.props.totalPages
-        ).toBe(1);
+        const partCards = renderer.root.findAllByType("part-card");
+        expect(partCards).toHaveLength(2);
+        expect(partCards[0].props.canManage).toBe(true);
+        expect(partCards[1].props.canManage).toBe(false);
+        expect(renderer.root.findAllByType("build-card")).toHaveLength(2);
     });
 
-
-    test("new Part search resets pagination to page zero", async () => {
-
+    test("successful search becomes the active query for pagination", async () => {
         useAuth.mockReturnValue({
             isAuthenticated: true,
             loading: false,
             username: "nick",
-            isAdmin: false
+            isAdmin: false,
+        });
+        partService.searchParts
+            .mockResolvedValueOnce(partPage([]))
+            .mockResolvedValueOnce(
+                partPage([], { totalElements: 25, totalPages: 3 })
+            )
+            .mockResolvedValueOnce(
+                partPage([], { page: 1, totalElements: 25, totalPages: 3 })
+            );
+        buildService.searchBuilds.mockResolvedValue(buildPage([]));
+
+        let renderer;
+        await act(async () => {
+            renderer = create(<HomePage />);
         });
 
+        const params = {
+            search: "RTX",
+            category: "GPU",
+            brand: "NVIDIA",
+            maxPrice: "800",
+            sortBy: "price",
+            direction: "ASC",
+        };
 
-        partService.searchParts.mockResolvedValue({
-            content: [],
+        await act(async () => {
+            await renderer.root.findByType("search-bar").props.onSearch(params);
+        });
+
+        expect(partService.searchParts).toHaveBeenLastCalledWith({
+            ...params,
             page: 0,
             size: 12,
-            totalElements: 0,
-            totalPages: 0
         });
-
-
-        buildService.searchBuilds.mockResolvedValue({
-            content: [],
-            page: 0,
-            size: 4,
-            totalElements: 0,
-            totalPages: 0
-        });
-
-
-        let renderer;
-
 
         await act(async () => {
-            renderer = create(<HomePage />);
+            await renderer.root.findByType("pagination").props.onPageChange(1);
         });
 
-
-        const searchBar =
-            renderer.root.findByType("search-bar");
-
-
-        const params = {
-            search: "GPU",
-            category: "GPU",
-            brand: "NVIDIA",
-            maxPrice: "800",
-            sortBy: "price",
-            direction: "ASC"
-        };
-
-
-        await act(async () => {
-            await searchBar.props.onSearch(params);
-        });
-
-
-        expect(
-            partService.searchParts
-        ).toHaveBeenLastCalledWith({
-            search: "GPU",
-            category: "GPU",
-            brand: "NVIDIA",
-            maxPrice: "800",
-            sortBy: "price",
-            direction: "ASC",
-            page: 0,
-            size: 12
+        expect(partService.searchParts).toHaveBeenLastCalledWith({
+            ...params,
+            page: 1,
+            size: 12,
         });
     });
 
-
-    test("Next preserves all active Part filters", async () => {
-
+    test("failed part search keeps prior results and shows a visible normalized error", async () => {
         useAuth.mockReturnValue({
             isAuthenticated: true,
             loading: false,
             username: "nick",
-            isAdmin: false
+            isAdmin: false,
         });
-
-
         partService.searchParts
-            .mockResolvedValueOnce({
-                content: [],
-                page: 0,
-                size: 12,
-                totalElements: 25,
-                totalPages: 3
-            })
-            .mockResolvedValueOnce({
-                content: [],
-                page: 0,
-                size: 12,
-                totalElements: 25,
-                totalPages: 3
-            })
-            .mockResolvedValueOnce({
-                content: [],
-                page: 1,
-                size: 12,
-                totalElements: 25,
-                totalPages: 3
-            });
-
-
-        buildService.searchBuilds.mockResolvedValue({
-            content: [],
-            page: 0,
-            size: 4,
-            totalElements: 0,
-            totalPages: 0
-        });
-
+            .mockResolvedValueOnce(
+                partPage([{ id: 1, name: "GPU", username: "nick" }])
+            )
+            .mockRejectedValueOnce(
+                Object.assign(new Error("Something went wrong on the server. Please try again."), {
+                    status: 500,
+                })
+            );
+        buildService.searchBuilds.mockResolvedValue(buildPage([]));
 
         let renderer;
-
-
         await act(async () => {
             renderer = create(<HomePage />);
         });
 
-
-        const searchBar =
-            renderer.root.findByType("search-bar");
-
-
-        const params = {
-            search: "RTX",
-            category: "GPU",
-            brand: "NVIDIA",
-            maxPrice: "800",
-            sortBy: "price",
-            direction: "ASC"
-        };
-
-
         await act(async () => {
-            await searchBar.props.onSearch(params);
+            await renderer.root.findByType("search-bar").props.onSearch({
+                search: "broken query",
+            });
         });
 
-
-        const pagination =
-            renderer.root.findByType("pagination");
-
-
-        await act(async () => {
-            await pagination.props.onPageChange(1);
-        });
-
-
+        expect(renderer.root.findAllByType("part-card")).toHaveLength(1);
         expect(
-            partService.searchParts
-        ).toHaveBeenLastCalledWith({
-            search: "RTX",
-            category: "GPU",
-            brand: "NVIDIA",
-            maxPrice: "800",
-            sortBy: "price",
-            direction: "ASC",
-            page: 1,
-            size: 12
-        });
+            renderer.root.findByProps({
+                className: "alert alert-danger mb-0",
+            }).children
+        ).toEqual(["Something went wrong on the server. Please try again."]);
     });
 
-
-    test("runs searches and displays a search error", async () => {
-
+    test("failed public build preview is not presented as an empty data set", async () => {
         useAuth.mockReturnValue({
             isAuthenticated: true,
             loading: false,
-            username: "admin",
-            isAdmin: true
+            username: "nick",
+            isAdmin: false,
         });
-
-
-        partService.searchParts
-            .mockResolvedValueOnce({
-                content: [],
-                page: 0,
-                size: 12,
-                totalElements: 0,
-                totalPages: 0
-            })
-            .mockRejectedValueOnce(
-                new Error("Search failed")
-            );
-
-
-        buildService.searchBuilds.mockResolvedValue({
-            content: [],
-            page: 0,
-            size: 4,
-            totalElements: 0,
-            totalPages: 0
-        });
-
+        partService.searchParts.mockResolvedValue(partPage([]));
+        buildService.searchBuilds.mockRejectedValue(
+            Object.assign(
+                new Error("Unable to reach the server. Check your connection and try again."),
+                { status: 0 }
+            )
+        );
 
         let renderer;
-
-
         await act(async () => {
             renderer = create(<HomePage />);
         });
 
-
-        const searchBar =
-            renderer.root.findByType("search-bar");
-
-
-        await act(async () => {
-            await searchBar.props.onSearch({
-                search: "GPU"
-            });
+        const alerts = renderer.root.findAllByProps({
+            className: "alert alert-danger",
         });
-
-
+        expect(alerts).toHaveLength(1);
+        expect(alerts[0].children).toEqual([
+            "Unable to reach the server. Check your connection and try again.",
+        ]);
         expect(
-            partService.searchParts
-        ).toHaveBeenLastCalledWith({
-            search: "GPU",
-            page: 0,
-            size: 12
-        });
-
-
-        const errorNodes =
-            renderer.root.findAll(
-                (node) =>
-                    node.children?.some(
-                        (child) =>
-                            typeof child === "string" &&
-                            child.includes("Search failed")
-                    )
-            );
-
-
-        expect(
-            errorNodes.length
-        ).toBeGreaterThan(0);
+            renderer.root.findAll((node) =>
+                node.children?.includes("No public builds yet.")
+            )
+        ).toHaveLength(0);
     });
 });

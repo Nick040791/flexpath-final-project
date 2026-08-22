@@ -4,9 +4,8 @@ import * as partService from "../api/partService";
 import PartCard from "../components/PartCard";
 import PartForm from "../components/PartForm";
 import ConfirmDeleteModal from "../components/ConfirmDeleteModal";
-import Breadcrumbs from "../components/Breadcrumbs";
 
-// "My Parts" — the current user's parts with create / edit / delete.
+// "My Parts" - the current user's parts with create / edit / delete.
 const MyPartsPage = () => {
     const { isAuthenticated, loading: authLoading } = useAuth();
     const [parts, setParts] = useState([]);
@@ -19,14 +18,18 @@ const MyPartsPage = () => {
     const loadParts = useCallback(async () => {
         setStatus("loading");
         setErrorMsg("");
+
         try {
             const data = await partService.getMyParts();
             setParts(data);
             setStatus("success");
+            return data;
         } catch (error) {
-            setParts([]);
+            // Preserve the last successful list. A failed refresh is not the same
+            // as a successful request returning zero parts.
             setStatus("error");
-            setErrorMsg(error.message);
+            setErrorMsg(error.message || "Unable to load your parts.");
+            return null;
         }
     }, []);
 
@@ -39,26 +42,34 @@ const MyPartsPage = () => {
     async function handleCreate(payload) {
         setSubmitting(true);
         setErrorMsg("");
+
         try {
             await partService.createPart(payload);
             setShowCreate(false);
             await loadParts();
         } catch (error) {
-            setErrorMsg(error.message);
+            // Keep the form open after a validation/server failure.
+            setErrorMsg(error.message || "Unable to create the part.");
         } finally {
             setSubmitting(false);
         }
     }
 
     async function handleDelete() {
+        if (!partToDelete) {
+            return;
+        }
+
         setSubmitting(true);
+        setErrorMsg("");
+
         try {
             await partService.deletePart(partToDelete.id);
             setPartToDelete(null);
             await loadParts();
         } catch (error) {
-            setErrorMsg(error.message);
-            setPartToDelete(null);
+            // Keep confirmation open so a failed request can be retried or cancelled.
+            setErrorMsg(error.message || "Unable to delete the part.");
         } finally {
             setSubmitting(false);
         }
@@ -74,13 +85,6 @@ const MyPartsPage = () => {
 
     return (
         <section className="container py-5 text-start">
-            <Breadcrumbs
-                items={[
-                    { label: "Home", to: "/" },
-                    { label: "My Parts" },
-                ]}
-            />
-
             <div className="d-flex flex-column flex-sm-row gap-3 justify-content-between align-items-sm-center mb-4 border-bottom border-warning border-3 pb-3">
                 <h1 className="h3 mb-0">My Parts</h1>
                 <button
@@ -92,7 +96,11 @@ const MyPartsPage = () => {
                 </button>
             </div>
 
-            {errorMsg && <div className="alert alert-danger">{errorMsg}</div>}
+            {errorMsg && (
+                <div className="alert alert-danger" role="alert">
+                    {errorMsg}
+                </div>
+            )}
 
             {showCreate && (
                 <div className="p-4 mb-4 bg-warning-subtle rounded-4 shadow border border-warning border-2">
@@ -106,7 +114,10 @@ const MyPartsPage = () => {
                 </div>
             )}
 
-            {status === "loading" && <p className="text-muted">Loading your parts...</p>}
+            {status === "loading" && parts.length === 0 && (
+                <p className="text-muted">Loading your parts...</p>
+            )}
+
             {status === "success" && parts.length === 0 && (
                 <p className="text-muted">You have not added any parts yet.</p>
             )}
