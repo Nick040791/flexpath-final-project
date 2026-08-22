@@ -1,13 +1,13 @@
-import { act, create } from "react-test-renderer";
-import AddPartToBuildModal from "./AddPartToBuildModal";
-import BuildForm from "./BuildForm";
-import * as buildService from "../api/buildService";
-
 jest.mock("../api/buildService", () => ({
     getMyBuilds: jest.fn(),
     createBuild: jest.fn(),
     addPartToBuild: jest.fn(),
 }));
+
+const { act, create } = require("react-test-renderer");
+const AddPartToBuildModal = require("./AddPartToBuildModal").default;
+const BuildForm = require("./BuildForm").default;
+const buildService = require("../api/buildService");
 
 const part = {
     id: 7,
@@ -48,8 +48,8 @@ describe("AddPartToBuildModal", () => {
         });
 
         const forms = renderer.root.findAllByType("form");
-        const addForm = forms.find((form) =>
-            form.findAllByType("select").length > 0
+        const addForm = forms.find(
+            (form) => form.findAllByType("select").length > 0
         );
 
         await act(async () => {
@@ -64,6 +64,7 @@ describe("AddPartToBuildModal", () => {
                 node.props?.role === "status" &&
                 node.children.join("").includes("Workstation")
         );
+
         expect(success.children.join("")).toContain("RTX 4070 Super");
     });
 
@@ -109,6 +110,7 @@ describe("AddPartToBuildModal", () => {
                 node.props?.role === "status" &&
                 node.children.join("").includes("Fresh Build")
         );
+
         expect(success.children.join("")).toContain("created");
     });
 });
